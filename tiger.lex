@@ -12,7 +12,7 @@ val stringStart = ref 0
 fun eof() = let val pos = hd(!linePos) in Tokens.EOF(pos,pos) end
 
 %%
-%s COMMENT STRING STRING_IGNORE;
+%s COMMENT STRING;
 %%
 
 <INITIAL>[ ]+|[\\t]+  => (continue());
@@ -63,24 +63,19 @@ fun eof() = let val pos = hd(!linePos) in Tokens.EOF(pos,pos) end
 <INITIAL>[a-zA-Z][a-zA-Z0-9_]* => (Tokens.ID (yytext, yypos, yypos+(size yytext)));
 
 <INITIAL>"/*" => (nestedComments := 1; YYBEGIN COMMENT; continue());
+<INITIAL>"*/" => (ErrorMsg.error yypos ("end comment with no start comment"); continue());
 <COMMENT>"/*" => (nestedComments := !nestedComments+1; continue());
 <COMMENT>"*/" => (nestedComments := !nestedComments-1; if (!nestedComments)=0 then YYBEGIN INITIAL else YYBEGIN COMMENT; continue());
 <COMMENT>\n   => (lineNum := !lineNum+1; linePos := yypos :: !linePos; continue());
 <COMMENT>.    => (continue());
 
-<INITIAL>\"         => (buildString := ""; stringStart := yypos; YYBEGIN STRING; continue());
-<STRING>\"          => (YYBEGIN INITIAL; Tokens.STRING(!buildString, !stringStart, yypos+1));
-<STRING>\\\\        => (buildString := (!buildString) ^ "\\"; continue());
-<STRING>\\\"        => (buildString := (!buildString) ^ "\""; continue());
-<STRING>\\n         => (buildString := (!buildString) ^ "\n"; continue());
-<STRING>\n          => (buildString := (!buildString) ^ "\n"; lineNum := !lineNum+1; linePos := yypos :: !linePos; continue());
-<STRING>.           => (buildString := (!buildString) ^ yytext; continue());
-<STRING>\\t         => (buildString := (!buildString) ^ "\t"; continue());
-<STRING>\\[0-9]+    => (if (Option.valOf (Int.fromString (substring (yytext,1,(size yytext)-1))))>255 then (ErrorMsg.error yypos ("illegal escape sequence " ^ yytext)) else (buildString := (!buildString) ^ (Char.toString (Char.chr (Option.valOf (Int.fromString (substring (yytext,1,(size yytext)-1))))))); continue());
-<STRING>\\f         => (YYBEGIN STRING_IGNORE; continue());
-<STRING>\\[a-zA-Z]* => (ErrorMsg.error yypos ("illegal escape sequence " ^ yytext); continue());
-<STRING_IGNORE>f\\  => (YYBEGIN STRING; continue());
-<STRING_IGNORE>\n   => (lineNum := !lineNum+1; linePos := yypos :: !linePos; continue());
-<STRING_IGNORE>.    => (continue());
+<INITIAL>\"               => (buildString := ""; stringStart := yypos; YYBEGIN STRING; continue());
+<STRING>\"                => (YYBEGIN INITIAL; Tokens.STRING(!buildString, !stringStart, yypos+1));
+<STRING>\n                => (buildString := (!buildString) ^ "\n"; lineNum := !lineNum+1; linePos := yypos :: !linePos; continue());
+<STRING>.                 => (buildString := (!buildString) ^ yytext; continue());
+<STRING>\\[0-9][0-9][0-9] => (if (Option.valOf (Int.fromString (substring (yytext,1,(size yytext)-1))))>255 then (ErrorMsg.error yypos ("illegal ascii char " ^ yytext)) else (buildString := (!buildString) ^ (Char.toString (Char.chr (Option.valOf (Int.fromString (substring (yytext,1,(size yytext)-1))))))); continue());
+<STRING>\\[abfnrtv\"\\]   => (buildString := (!buildString) ^ (String.str (Option.valOf (Char.fromString yytext))); continue());
+<STRING>\\\^[@-_]         => (buildString := (!buildString) ^ (String.str (Option.valOf (Char.fromString yytext))); continue());
+<STRING>\\.               => (ErrorMsg.error yypos ("illegal escape sequence " ^ yytext); continue());
 
 . => (ErrorMsg.error yypos ("illegal character " ^ yytext); continue());
