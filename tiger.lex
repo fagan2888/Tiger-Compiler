@@ -7,6 +7,7 @@ fun err(p1,p2) = ErrorMsg.error p1
 
 val nestedComments = ref 0
 val buildString = ref ""
+val stringStart = ref 0
 
 fun eof() = let val pos = hd(!linePos) in Tokens.EOF(pos,pos) end
 
@@ -67,8 +68,8 @@ fun eof() = let val pos = hd(!linePos) in Tokens.EOF(pos,pos) end
 <COMMENT>\n   => (lineNum := !lineNum+1; linePos := yypos :: !linePos; continue());
 <COMMENT>.    => (continue());
 
-<INITIAL>\"         => (buildString := ""; YYBEGIN STRING; continue());
-<STRING>\"          => (YYBEGIN INITIAL; Tokens.STRING(!buildString, yypos, yypos+(size (!buildString))));
+<INITIAL>\"         => (buildString := ""; stringStart := yypos; YYBEGIN STRING; continue());
+<STRING>\"          => (YYBEGIN INITIAL; Tokens.STRING(!buildString, !stringStart, yypos+1));
 <STRING>\\\\        => (buildString := (!buildString) ^ "\\"; continue());
 <STRING>\\\"        => (buildString := (!buildString) ^ "\""; continue());
 <STRING>\\n         => (buildString := (!buildString) ^ "\n"; continue());

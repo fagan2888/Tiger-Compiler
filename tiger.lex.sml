@@ -111,6 +111,7 @@ fun err(p1,p2) = ErrorMsg.error p1
 
 val nestedComments = ref 0
 val buildString = ref ""
+val stringStart = ref 0
 
 fun eof() = let val pos = hd(!linePos) in Tokens.EOF(pos,pos) end
 
@@ -277,9 +278,9 @@ fun yyAction47 (strm, lastMatch : yymatch) = (yystrm := strm;
       (lineNum := !lineNum+1; linePos := yypos :: !linePos; continue()))
 fun yyAction48 (strm, lastMatch : yymatch) = (yystrm := strm; (continue()))
 fun yyAction49 (strm, lastMatch : yymatch) = (yystrm := strm;
-      (buildString := ""; YYBEGIN STRING; continue()))
+      (buildString := ""; stringStart := yypos; YYBEGIN STRING; continue()))
 fun yyAction50 (strm, lastMatch : yymatch) = (yystrm := strm;
-      (YYBEGIN INITIAL; Tokens.STRING(!buildString, yypos, yypos+(size (!buildString)))))
+      (YYBEGIN INITIAL; Tokens.STRING(!buildString, !stringStart, yypos+1)))
 fun yyAction51 (strm, lastMatch : yymatch) = (yystrm := strm;
       (buildString := (!buildString) ^ "\\"; continue()))
 fun yyAction52 (strm, lastMatch : yymatch) = (yystrm := strm;
