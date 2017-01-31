@@ -15,8 +15,8 @@ fun eof() = let val pos = hd(!linePos) in Tokens.EOF(pos,pos) end
 %s COMMENT STRING;
 %%
 
-<INITIAL>[ ]+|[\\t]+  => (continue());
-<INITIAL>\n           => (lineNum := !lineNum+1; linePos := yypos :: !linePos; continue());
+<INITIAL>[ |\t]+ => (continue());
+<INITIAL>\n         => (lineNum := !lineNum+1; linePos := yypos :: !linePos; continue());
 
 <INITIAL>type     => (Tokens.TYPE (yypos, yypos+4));
 <INITIAL>var      => (Tokens.VAR (yypos, yypos+3));
@@ -59,8 +59,8 @@ fun eof() = let val pos = hd(!linePos) in Tokens.EOF(pos,pos) end
 <INITIAL>":"      => (Tokens.COLON (yypos, yypos+1));
 <INITIAL>","      => (Tokens.COMMA (yypos, yypos+1));
 
-<INITIAL>[0-9]+                => (Tokens.INT ((valOf (Int.fromString yytext)), yypos, yypos+(size yytext)));
-<INITIAL>[a-zA-Z][a-zA-Z0-9_]* => (Tokens.ID (yytext, yypos, yypos+(size yytext)));
+<INITIAL>[0-9]+                => (Tokens.INT ((Option.valOf (Int.fromString yytext)), yypos, yypos+(String.size yytext)));
+<INITIAL>[a-zA-Z][a-zA-Z0-9_]* => (Tokens.ID (yytext, yypos, yypos+(String.size yytext)));
 
 <INITIAL>"/*" => (nestedComments := 1; YYBEGIN COMMENT; continue());
 <INITIAL>"*/" => (ErrorMsg.error yypos ("end comment with no start comment"); continue());
@@ -73,7 +73,7 @@ fun eof() = let val pos = hd(!linePos) in Tokens.EOF(pos,pos) end
 <STRING>\"                => (YYBEGIN INITIAL; Tokens.STRING(!buildString, !stringStart, yypos+1));
 <STRING>\n                => (buildString := (!buildString) ^ "\n"; lineNum := !lineNum+1; linePos := yypos :: !linePos; continue());
 <STRING>.                 => (buildString := (!buildString) ^ yytext; continue());
-<STRING>\\[0-9][0-9][0-9] => (if (Option.valOf (Int.fromString (substring (yytext,1,(size yytext)-1))))>255 then (ErrorMsg.error yypos ("illegal ascii char " ^ yytext)) else (buildString := (!buildString) ^ (Char.toString (Char.chr (Option.valOf (Int.fromString (substring (yytext,1,(size yytext)-1))))))); continue());
+<STRING>\\[0-9][0-9][0-9] => (if (Option.valOf (Int.fromString (String.substring (yytext,1,(String.size yytext)-1))))>255 then (ErrorMsg.error yypos ("illegal ascii char " ^ yytext)) else (buildString := (!buildString) ^ (Char.toString (Char.chr (Option.valOf (Int.fromString (String.substring (yytext,1,(String.size yytext)-1))))))); continue());
 <STRING>\\[abfnrtv\"\\]   => (buildString := (!buildString) ^ (String.str (Option.valOf (Char.fromString yytext))); continue());
 <STRING>\\\^[@-_]         => (buildString := (!buildString) ^ (String.str (Option.valOf (Char.fromString yytext))); continue());
 <STRING>\\.               => (ErrorMsg.error yypos ("illegal escape sequence " ^ yytext); continue());
