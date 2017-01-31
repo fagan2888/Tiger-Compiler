@@ -8,15 +8,23 @@ fun err(p1,p2) = ErrorMsg.error p1
 val nestedComments = ref 0
 val buildString = ref ""
 val stringStart = ref 0
+val insideString = ref 0
 
-fun eof() = let val pos = hd(!linePos) in Tokens.EOF(pos,pos) end
+fun eof() =
+  let
+    val pos = hd(!linePos)
+  in
+    if !nestedComments>0 then (ErrorMsg.error pos ("reached eof inside comment")) else ();
+    if !insideString=1 then (ErrorMsg.error pos ("reached eof inside string")) else ();
+    Tokens.EOF(pos,pos)
+  end
 
 %%
 %s COMMENT STRING;
 %%
 
 <INITIAL>[ |\t]+ => (continue());
-<INITIAL>\n         => (lineNum := !lineNum+1; linePos := yypos :: !linePos; continue());
+<INITIAL>\n      => (lineNum := !lineNum+1; linePos := yypos :: !linePos; continue());
 
 <INITIAL>type     => (Tokens.TYPE (yypos, yypos+4));
 <INITIAL>var      => (Tokens.VAR (yypos, yypos+3));
@@ -69,8 +77,8 @@ fun eof() = let val pos = hd(!linePos) in Tokens.EOF(pos,pos) end
 <COMMENT>\n   => (lineNum := !lineNum+1; linePos := yypos :: !linePos; continue());
 <COMMENT>.    => (continue());
 
-<INITIAL>\"               => (buildString := ""; stringStart := yypos; YYBEGIN STRING; continue());
-<STRING>\"                => (YYBEGIN INITIAL; Tokens.STRING(!buildString, !stringStart, yypos+1));
+<INITIAL>\"               => (insideString := 1; buildString := ""; stringStart := yypos; YYBEGIN STRING; continue());
+<STRING>\"                => (insideString := 0; YYBEGIN INITIAL; Tokens.STRING(!buildString, !stringStart, yypos+1));
 <STRING>\n                => (buildString := (!buildString) ^ "\n"; lineNum := !lineNum+1; linePos := yypos :: !linePos; continue());
 <STRING>.                 => (buildString := (!buildString) ^ yytext; continue());
 <STRING>\\[0-9][0-9][0-9] => (if (Option.valOf (Int.fromString (String.substring (yytext,1,(String.size yytext)-1))))>255 then (ErrorMsg.error yypos ("illegal ascii char " ^ yytext)) else (buildString := (!buildString) ^ (Char.toString (Char.chr (Option.valOf (Int.fromString (String.substring (yytext,1,(String.size yytext)-1))))))); continue());

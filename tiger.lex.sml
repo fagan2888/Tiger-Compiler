@@ -112,8 +112,16 @@ fun err(p1,p2) = ErrorMsg.error p1
 val nestedComments = ref 0
 val buildString = ref ""
 val stringStart = ref 0
+val insideString = ref 0
 
-fun eof() = let val pos = hd(!linePos) in Tokens.EOF(pos,pos) end
+fun eof() =
+  let
+    val pos = hd(!linePos)
+  in
+    if !nestedComments>0 then (ErrorMsg.error pos ("reached eof inside comment")) else ();
+    if !insideString=1 then (ErrorMsg.error pos ("reached eof inside string")) else ();
+    Tokens.EOF(pos,pos)
+  end
 
 
 
@@ -280,9 +288,9 @@ fun yyAction48 (strm, lastMatch : yymatch) = (yystrm := strm;
       (lineNum := !lineNum+1; linePos := yypos :: !linePos; continue()))
 fun yyAction49 (strm, lastMatch : yymatch) = (yystrm := strm; (continue()))
 fun yyAction50 (strm, lastMatch : yymatch) = (yystrm := strm;
-      (buildString := ""; stringStart := yypos; YYBEGIN STRING; continue()))
+      (insideString := 1; buildString := ""; stringStart := yypos; YYBEGIN STRING; continue()))
 fun yyAction51 (strm, lastMatch : yymatch) = (yystrm := strm;
-      (YYBEGIN INITIAL; Tokens.STRING(!buildString, !stringStart, yypos+1)))
+      (insideString := 0; YYBEGIN INITIAL; Tokens.STRING(!buildString, !stringStart, yypos+1)))
 fun yyAction52 (strm, lastMatch : yymatch) = (yystrm := strm;
       (buildString := (!buildString) ^ "\n"; lineNum := !lineNum+1; linePos := yypos :: !linePos; continue()))
 fun yyAction53 (strm, lastMatch : yymatch) = let
