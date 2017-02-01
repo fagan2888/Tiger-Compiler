@@ -119,7 +119,7 @@ fun eof() =
     val pos = hd(!linePos)
   in
     if !nestedComments>0 then (ErrorMsg.error pos ("reached eof inside comment")) else ();
-    if !insideString=1 then (ErrorMsg.error pos ("reached eof inside string")) else ();
+    if !insideString=1 then (insideString := 0; ErrorMsg.error pos ("reached eof inside string")) else ();
     Tokens.EOF(pos,pos)
   end
 
