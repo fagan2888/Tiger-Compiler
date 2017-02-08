@@ -15,7 +15,10 @@
     program
 	| decs | dec | tydec | vardec | fundec
 	| ty | tyfields
-	| exp
+	| exp | exps | lvalue | expseq
+	| funccall
+	| ifthen | ifthenelse | whilestm | forstm | letstm
+		
 
 %pos int
 %verbose
@@ -36,7 +39,7 @@
 
 %%
 
-decs : dec dec () (* Maybe *)
+decs : decs dec () (* Maybe *)
 
 dec : tydec ()
 	  | vardec ()
@@ -62,3 +65,25 @@ fundec : FUNCTION ID LPAREN tyfields RPAREN ASSIGN exp ()
 			 | FUNCTION ID LPAREN tyfields RPAREN COLON ID ASSIGN exp ()
 
 									
+exps : exp exp ()
+
+exp : ()
+
+lvalue : ()
+
+expseq : ()
+
+funccall : ()
+
+								(* Arithmetic and Comparison Exps*)
+
+ifthenelse : IF exp THEN exp ELSE exp ()
+
+ifthen : IF exp THEN exp ()
+
+whilestm : WHILE exp DO exp ()
+
+forstm : FOR ID COLON ASSIGN exp TO exp DO exp ()
+
+letstm : LET decs IN exp END () (* Maybe *)
+					

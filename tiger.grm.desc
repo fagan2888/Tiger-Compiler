@@ -1,6 +1,6 @@
-15 rules not reduced
+25 rules not reduced
 
-warning: rule <decs : dec dec > will never be reduced
+warning: rule <decs : decs dec > will never be reduced
 warning: rule <dec : tydec > will never be reduced
 warning: rule <dec : vardec > will never be reduced
 warning: rule <dec : fundec > will never be reduced
@@ -15,6 +15,16 @@ warning: rule <vardec : VAR ID COLON ASSIGN exp > will never be reduced
 warning: rule <vardec : VAR ID COLON ID COLON ASSIGN exp > will never be reduced
 warning: rule <fundec : FUNCTION ID LPAREN tyfields RPAREN ASSIGN exp > will never be reduced
 warning: rule <fundec : FUNCTION ID LPAREN tyfields RPAREN COLON ID ASSIGN exp > will never be reduced
+warning: rule <exps : exp exp > will never be reduced
+warning: rule <exp : > will never be reduced
+warning: rule <lvalue : > will never be reduced
+warning: rule <expseq : > will never be reduced
+warning: rule <funccall : > will never be reduced
+warning: rule <ifthenelse : IF exp THEN exp ELSE exp > will never be reduced
+warning: rule <ifthen : IF exp THEN exp > will never be reduced
+warning: rule <whilestm : WHILE exp DO exp > will never be reduced
+warning: rule <forstm : FOR ID COLON ASSIGN exp TO exp DO exp > will never be reduced
+warning: rule <letstm : LET decs IN exp END > will never be reduced
 
 state 0:
 
