@@ -46,7 +46,7 @@ dec : tydec ()
 tydec : TYPE ID ASSIGN ty ()
 
 ty : ID ()
-	 | LBRACE tyfields BRACE ()
+	 | LBRACE tyfields RBRACE ()
 	 | ARRAY OF ID ()
 
 tyfields : ()

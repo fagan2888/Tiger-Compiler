@@ -1,25 +1,31 @@
+15 rules not reduced
+
+warning: rule <decs : dec dec > will never be reduced
+warning: rule <dec : tydec > will never be reduced
+warning: rule <dec : vardec > will never be reduced
+warning: rule <dec : fundec > will never be reduced
+warning: rule <tydec : TYPE ID ASSIGN ty > will never be reduced
+warning: rule <ty : ID > will never be reduced
+warning: rule <ty : LBRACE tyfields RBRACE > will never be reduced
+warning: rule <ty : ARRAY OF ID > will never be reduced
+warning: rule <tyfields : > will never be reduced
+warning: rule <tyfields : ID COLON ID > will never be reduced
+warning: rule <tyfields : ID COLON ID COMMA tyfields > will never be reduced
+warning: rule <vardec : VAR ID COLON ASSIGN exp > will never be reduced
+warning: rule <vardec : VAR ID COLON ID COLON ASSIGN exp > will never be reduced
+warning: rule <fundec : FUNCTION ID LPAREN tyfields RPAREN ASSIGN exp > will never be reduced
+warning: rule <fundec : FUNCTION ID LPAREN tyfields RPAREN COLON ID ASSIGN exp > will never be reduced
 
 state 0:
 
-	program : . exp 
 
 
-	exp	goto 1
-	program	goto 2
+	program	goto 1
 
-	.	reduce by rule 1
+	.	error
 
 
 state 1:
-
-	program : exp .  (reduce by rule 0)
-
-
-
-	.	reduce by rule 0
-
-
-state 2:
 
 
 	EOF	accept
@@ -27,5 +33,5 @@ state 2:
 
 	.	error
 
-1 of 4 action table entries left after compaction
-2 goto table entries
+1 of 3 action table entries left after compaction
+1 goto table entries
