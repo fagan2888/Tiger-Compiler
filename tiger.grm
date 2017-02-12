@@ -15,8 +15,8 @@
     program
 	| decs | dec | tydec | vardec | fundec
 	| ty | tyfields
-	| exp | exps | lvalue | expseq
-	| funccall
+	| exp | lvalue | expseq | expseq2
+	| funcall | funinputs | funinputs2
 	| ifthen | ifthenelse | whilestm | forstm | letstm
 
 
@@ -37,17 +37,25 @@
 %value INT (1)
 %value STRING ("")
 
+%left OR
+%left AND
+%nonassoc EQ NEQ GT LT GE LE
+%left PLUS MINUS
+%left TIMES DIVIDE
+
 %%
 
-program: exp ()
+program : exp ()
+        | decs ()
 
-decs : decs dec () (* Maybe *)
+decs : decs dec ()
+     | ()
 
 dec : tydec ()
 	  | vardec ()
 	  | fundec ()
 
-tydec : TYPE ID ASSIGN ty ()
+tydec : TYPE ID EQ ty ()
 
 ty : ID ()
 	 | LBRACE tyfields RBRACE ()
@@ -57,13 +65,11 @@ tyfields : ()
 				 | ID COLON ID ()
 				 | ID COLON ID COMMA tyfields () (* Maybe *)
 
-vardec : VAR ID COLON ASSIGN exp ()
-			 | VAR ID COLON ID COLON ASSIGN exp ()
+vardec : VAR ID ASSIGN exp ()
+			 | VAR ID COLON ID ASSIGN exp ()
 
-fundec : FUNCTION ID LPAREN tyfields RPAREN ASSIGN exp ()
-			 | FUNCTION ID LPAREN tyfields RPAREN COLON ID ASSIGN exp ()
-
-exps : exp exp ()
+fundec : FUNCTION ID LPAREN tyfields RPAREN EQ exp ()
+			 | FUNCTION ID LPAREN tyfields RPAREN COLON ID EQ exp ()
 
 exp : letstm ()
     | forstm ()
@@ -71,17 +77,47 @@ exp : letstm ()
     | ifthen ()
     | ifthenelse ()
     | ID ()
-    | exps ()
     | fundec ()
+    | funcall ()
     | vardec ()
     | tydec ()
     | INT ()
+    | lvalue ()
+    | lvalue ASSIGN exp ()
+    | ID LBRACK exp RBRACK OF exp  ()
+    | NIL ()
+    | BREAK ()
+    | exp PLUS exp ()
+    | exp MINUS exp ()
+    | exp TIMES exp ()
+    | exp DIVIDE exp ()
+    | exp OR exp ()
+    | exp AND exp ()
+    | exp GE exp ()
+    | exp GT exp ()
+    | exp LE exp ()
+    | exp LT exp ()
+    | exp NEQ exp ()
+    | exp EQ exp ()
 
-lvalue : ()
+lvalue : ID ()
+       | lvalue DOT ID ()
+       | lvalue LBRACK exp RBRACK ()
 
-expseq : ()
+expseq : expseq2 exp ()
+       | expseq2 exp SEMICOLON ()
+       | ()
 
-funccall : ()
+expseq2 : ()
+        | exp SEMICOLON expseq2 ()
+
+funcall : ID LPAREN funinputs RPAREN()
+
+funinputs : ()
+          | funinputs2 exp ()
+
+funinputs2 : exp COMMA funinputs2 ()
+           | ()
 
 								(* Arithmetic and Comparison Exps*)
 
@@ -93,4 +129,4 @@ whilestm : WHILE exp DO exp ()
 
 forstm : FOR ID COLON ASSIGN exp TO exp DO exp ()
 
-letstm : LET decs IN exp END () (* Maybe *)
+letstm : LET decs IN expseq END () (* Maybe *)
