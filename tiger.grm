@@ -1,15 +1,15 @@
 %%
 %term
-    EOF 
+    EOF
   | ID of string
-  | INT of int | STRING of string 
-  | COMMA | COLON | SEMICOLON | LPAREN | RPAREN | LBRACK | RBRACK 
-  | LBRACE | RBRACE | DOT 
+  | INT of int | STRING of string
+  | COMMA | COLON | SEMICOLON | LPAREN | RPAREN | LBRACK | RBRACK
+  | LBRACE | RBRACE | DOT
   | PLUS | MINUS | TIMES | DIVIDE | EQ | NEQ | LT | LE | GT | GE
   | AND | OR | ASSIGN
-  | ARRAY | IF | THEN | ELSE | WHILE | FOR | TO | DO | LET | IN | END | OF 
+  | ARRAY | IF | THEN | ELSE | WHILE | FOR | TO | DO | LET | IN | END | OF
   | BREAK | NIL
-  | FUNCTION | VAR | TYPE 
+  | FUNCTION | VAR | TYPE
 
 %nonterm
     program
@@ -18,7 +18,7 @@
 	| exp | exps | lvalue | expseq
 	| funccall
 	| ifthen | ifthenelse | whilestm | forstm | letstm
-		
+
 
 %pos int
 %verbose
@@ -28,7 +28,7 @@
 
 %name Tiger
 
-%keyword WHILE FOR TO BREAK LET IN END FUNCTION VAR TYPE ARRAY IF THEN ELSE 
+%keyword WHILE FOR TO BREAK LET IN END FUNCTION VAR TYPE ARRAY IF THEN ELSE
 	DO OF NIL
 
 %prefer THEN ELSE LPAREN
@@ -39,12 +39,13 @@
 
 %%
 
+program: exp ()
+
 decs : decs dec () (* Maybe *)
 
 dec : tydec ()
 	  | vardec ()
 	  | fundec ()
-						
 
 tydec : TYPE ID ASSIGN ty ()
 
@@ -53,21 +54,28 @@ ty : ID ()
 	 | ARRAY OF ID ()
 
 tyfields : ()
-				 | ID COLON ID () 
+				 | ID COLON ID ()
 				 | ID COLON ID COMMA tyfields () (* Maybe *)
 
-							
 vardec : VAR ID COLON ASSIGN exp ()
 			 | VAR ID COLON ID COLON ASSIGN exp ()
-						 
-						
+
 fundec : FUNCTION ID LPAREN tyfields RPAREN ASSIGN exp ()
 			 | FUNCTION ID LPAREN tyfields RPAREN COLON ID ASSIGN exp ()
 
-									
 exps : exp exp ()
 
-exp : ()
+exp : letstm ()
+    | forstm ()
+    | whilestm ()
+    | ifthen ()
+    | ifthenelse ()
+    | ID ()
+    | exps ()
+    | fundec ()
+    | vardec ()
+    | tydec ()
+    | INT ()
 
 lvalue : ()
 
@@ -86,4 +94,3 @@ whilestm : WHILE exp DO exp ()
 forstm : FOR ID COLON ASSIGN exp TO exp DO exp ()
 
 letstm : LET decs IN exp END () (* Maybe *)
-					
