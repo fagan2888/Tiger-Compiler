@@ -26,7 +26,7 @@ fun eof() =
 %s COMMENT STRING;
 %%
 
-<INITIAL>[ |\t]+ => (continue());
+<INITIAL>[ \t]+ => (continue());
 <INITIAL>\n      => (lineNum := !lineNum+1; linePos := yypos :: !linePos; continue());
 
 <INITIAL>type     => (Tokens.TYPE (yypos, yypos+4));
