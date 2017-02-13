@@ -14,9 +14,10 @@
 %nonterm
     program
 	| decs | dec | tydec | vardec | fundec
-	| ty | tyfields
+	| ty | tyfields | tyfields2
 	| exp | lvalue | expseq | expseq2
 	| funcall | funinputs | funinputs2
+  | arraycreate | recordcreate | recordinputs | recordinputs2
 	| ifthen | ifthenelse | whilestm | forstm | letstm
 
 
@@ -63,7 +64,10 @@ ty : ID ()
 
 tyfields : ()
 				 | ID COLON ID ()
-				 | ID COLON ID COMMA tyfields () (* Maybe *)
+				 | ID COLON ID tyfields2 ()
+
+tyfields2 : COMMA ID COLON ID ()
+          | COMMA ID COLON ID tyfields2 ()
 
 vardec : VAR ID ASSIGN exp ()
 			 | VAR ID COLON ID ASSIGN exp ()
@@ -84,7 +88,8 @@ exp : letstm ()
     | STRING ()
     | lvalue ()
     | lvalue ASSIGN exp ()
-    | ID LBRACK exp RBRACK OF exp  ()
+    | arraycreate ()
+    | recordcreate ()
     | NIL ()
     | BREAK ()
     | exp PLUS exp ()
@@ -100,7 +105,7 @@ exp : letstm ()
     | exp LT exp ()
     | exp NEQ exp ()
     | exp EQ exp ()
-    | LPAREN exp RPAREN ()
+    | LPAREN expseq RPAREN ()
 
 lvalue : ID ()
        | lvalue DOT ID ()
@@ -113,7 +118,7 @@ expseq : exp expseq2 ()
 expseq2 : SEMICOLON exp ()
         | SEMICOLON exp expseq2 ()
 
-funcall : ID LPAREN funinputs RPAREN()
+funcall : ID LPAREN funinputs RPAREN ()
 
 funinputs : exp funinputs2 ()
           | exp ()
@@ -122,12 +127,29 @@ funinputs : exp funinputs2 ()
 funinputs2 : COMMA exp ()
            | COMMA exp funinputs2 ()
 
+arraycreate : ID LBRACK exp RBRACK OF exp  ()
+
+recordcreate : ID LBRACE recordinputs RBRACE ()
+
+recordinputs : ID EQ exp recordinputs2 ()
+             | ID EQ exp ()
+             | ()
+
+recordinputs2 : COMMA ID EQ exp ()
+              | COMMA ID EQ exp recordinputs2 ()
+
 ifthenelse : IF exp THEN exp ELSE exp ()
 
 ifthen : IF exp THEN exp ()
 
 whilestm : WHILE exp DO exp ()
 
-forstm : FOR ID COLON ASSIGN exp TO exp DO exp ()
+forstm : FOR ID ASSIGN exp TO exp DO exp ()
 
-letstm : LET decs IN expseq END () (* Maybe *)
+letstm : LET decs IN expseq END ()
+
+(* TODO
+ * merge.tig : line 9 thinks doing variable declaration but we want a function call
+ * queens.tig : think we are doing array creation but we want lvalue = exp
+ * Thoughts :
+ *)
