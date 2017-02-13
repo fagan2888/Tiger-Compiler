@@ -16,9 +16,9 @@
 	| decs | dec | tydec | vardec | fundec
 	| ty | tyfields | tyfields2
 	| exp | lvalue | expseq | expseq2
-	| funcall | funinputs | funinputs2
-  | arraycreate | recordcreate | recordinputs | recordinputs2
-	| ifthen | ifthenelse | whilestm | forstm | letstm
+	| funcall | funinputs
+  | arraycreate | recordcreate | recordinputs
+	| if | loop | let
 
 
 %pos int
@@ -37,6 +37,9 @@
 %value INT (1)
 %value STRING ("")
 
+%nonassoc ID
+%nonassoc ASSIGN DO THEN OF LBRACK RBRACK
+%nonassoc ELSE
 %left OR
 %left AND
 %nonassoc EQ NEQ GT LT GE LE
@@ -47,7 +50,6 @@
 %%
 
 program : exp ()
-        | decs ()
 
 decs : decs dec ()
      | ()
@@ -75,15 +77,11 @@ vardec : VAR ID ASSIGN exp ()
 fundec : FUNCTION ID LPAREN tyfields RPAREN EQ exp ()
 			 | FUNCTION ID LPAREN tyfields RPAREN COLON ID EQ exp ()
 
-exp : letstm ()
-    | forstm ()
-    | whilestm ()
-    | ifthen ()
-    | ifthenelse ()
-    | fundec ()
+exp : let ()
+    | loop ()
+    | if ()
+    | dec ()
     | funcall ()
-    | vardec ()
-    | tydec ()
     | INT ()
     | STRING ()
     | lvalue ()
@@ -110,6 +108,7 @@ exp : letstm ()
 lvalue : ID ()
        | lvalue DOT ID ()
        | lvalue LBRACK exp RBRACK ()
+       | ID LBRACK exp RBRACK ()
 
 expseq : exp expseq2 ()
        | exp ()
@@ -119,37 +118,30 @@ expseq2 : SEMICOLON exp ()
         | SEMICOLON exp expseq2 ()
 
 funcall : ID LPAREN funinputs RPAREN ()
+        | ID LPAREN RPAREN ()
 
-funinputs : exp funinputs2 ()
+funinputs : exp COMMA funinputs ()
           | exp ()
-          | ()
-
-funinputs2 : COMMA exp ()
-           | COMMA exp funinputs2 ()
 
 arraycreate : ID LBRACK exp RBRACK OF exp  ()
 
 recordcreate : ID LBRACE recordinputs RBRACE ()
+             | ID LBRACE RBRACE ()
 
-recordinputs : ID EQ exp recordinputs2 ()
+recordinputs : ID EQ exp COMMA recordinputs ()
              | ID EQ exp ()
-             | ()
 
-recordinputs2 : COMMA ID EQ exp ()
-              | COMMA ID EQ exp recordinputs2 ()
+if: IF exp THEN exp ELSE exp ()
+  | IF exp THEN exp ()
 
-ifthenelse : IF exp THEN exp ELSE exp ()
+loop : WHILE exp DO exp ()
+     | FOR ID ASSIGN exp TO exp DO exp ()
 
-ifthen : IF exp THEN exp ()
-
-whilestm : WHILE exp DO exp ()
-
-forstm : FOR ID ASSIGN exp TO exp DO exp ()
-
-letstm : LET decs IN expseq END ()
+let : LET decs IN expseq END ()
 
 (* TODO
  * merge.tig : line 9 thinks doing variable declaration but we want a function call
- * queens.tig : think we are doing array creation but we want lvalue = exp
- * Thoughts :
+ *
+ * Thoughts
+ * lvalue : originally wasn't working. Didn't know to reduce to id
  *)
