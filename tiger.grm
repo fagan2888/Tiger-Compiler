@@ -1,3 +1,5 @@
+structure A = Absyn
+									
 %%
 %term
     EOF
@@ -12,7 +14,7 @@
   | FUNCTION | VAR | TYPE
 
 %nonterm
-    program
+    program of A.exp
 	| decs | dec | tydec | vardec | fundec
 	| ty | tyfields | tyfields2
 	| exp | lvalue | expseq | expseq2
@@ -49,7 +51,7 @@
 
 %%
 
-program : exp ()
+program : exp (A.NilExp)
 
 decs : decs dec ()
      | ()

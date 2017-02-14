@@ -8,6 +8,8 @@ structure ParserData=
 struct
 structure Header = 
 struct
+structure A = Absyn
+									
 
 end
 structure LrTable = Token.LrTable
@@ -583,10 +585,10 @@ structure MlyValue =
 struct
 datatype svalue = VOID | ntVOID of unit ->  unit
  | STRING of unit ->  (string) | INT of unit ->  (int)
- | ID of unit ->  (string)
+ | ID of unit ->  (string) | program of unit ->  (A.exp)
 end
 type svalue = MlyValue.svalue
-type result = unit
+type result = A.exp
 end
 structure EC=
 struct
@@ -684,10 +686,10 @@ fn (i392,defaultPos,stack,
     (()):arg) =>
 case (i392,stack)
 of  ( 0, ( ( _, ( MlyValue.ntVOID exp1, exp1left, exp1right)) :: 
-rest671)) => let val  result = MlyValue.ntVOID (fn _ => ( let val  
-exp1 = exp1 ()
- in ()
-end; ()))
+rest671)) => let val  result = MlyValue.program (fn _ => let val  exp1
+ = exp1 ()
+ in (A.NilExp)
+end)
  in ( LrTable.NT 0, ( result, exp1left, exp1right), rest671)
 end
 |  ( 1, ( ( _, ( MlyValue.ntVOID dec1, _, dec1right)) :: ( _, ( 
@@ -1226,7 +1228,7 @@ end
 | _ => raise (mlyAction i392)
 end
 val void = MlyValue.VOID
-val extract = fn a => (fn MlyValue.ntVOID x => x
+val extract = fn a => (fn MlyValue.program x => x
 | _ => let exception ParseInternal
 	in raise ParseInternal end) a ()
 end
