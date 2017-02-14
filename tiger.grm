@@ -5,7 +5,7 @@
   | INT of int | STRING of string
   | COMMA | COLON | SEMICOLON | LPAREN | RPAREN | LBRACK | RBRACK
   | LBRACE | RBRACE | DOT
-  | PLUS | MINUS | UMINUS | TIMES | DIVIDE | EQ | NEQ | LT | LE | GT | GE
+  | PLUS | MINUS | UMINUS | TIMES | DIVIDE | EQ | NEQ | LT | LE | GT | GE | EQUALS
   | AND | OR | ASSIGN
   | ARRAY | IF | THEN | ELSE | WHILE | FOR | TO | DO | LET | IN | END | OF
   | BREAK | NIL
@@ -38,11 +38,11 @@
 %value STRING ("")
 
 %nonassoc ID
-%nonassoc ASSIGN DO THEN OF LBRACK RBRACK
-%nonassoc ELSE
+%nonassoc ASSIGN EQ DO THEN OF LBRACK
+%right ELSE
 %left OR
 %left AND
-%nonassoc EQ NEQ GT LT GE LE
+%nonassoc EQUALS NEQ GT LT GE LE
 %left PLUS MINUS
 %left TIMES DIVIDE
 %left UMINUS
@@ -102,7 +102,7 @@ exp : let ()
     | exp LE exp ()
     | exp LT exp ()
     | exp NEQ exp ()
-    | exp EQ exp ()
+    | exp EQ exp %prec EQUALS ()
     | LPAREN expseq RPAREN ()
 
 lvalue : ID ()
@@ -131,8 +131,8 @@ recordcreate : ID LBRACE recordinputs RBRACE ()
 recordinputs : ID EQ exp COMMA recordinputs ()
              | ID EQ exp ()
 
-if: IF exp THEN exp ELSE exp ()
-  | IF exp THEN exp ()
+if : IF exp THEN exp ELSE exp ()
+   | IF exp THEN exp ()
 
 loop : WHILE exp DO exp ()
      | FOR ID ASSIGN exp TO exp DO exp ()
@@ -140,8 +140,11 @@ loop : WHILE exp DO exp ()
 let : LET decs IN expseq END ()
 
 (* TODO
- * merge.tig : line 9 thinks doing variable declaration but we want a function call
+ * TEST ASSIGN for longer inputs
  *
  * Thoughts
- * lvalue : originally wasn't working. Didn't know to reduce to id
+ * lvalue (queens): originally wasn't working. Didn't know to reduce to id
+ * precedence (merge) : line 9 thinks expression in function call is just ID
+ *                      precedence with EQ fixed the problem
+ * else : made right, not sure why
  *)

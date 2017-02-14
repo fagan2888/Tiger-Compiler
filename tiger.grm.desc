@@ -1221,11 +1221,16 @@ state 55:
 	exp : exp . NEQ exp 
 	exp : exp . EQ exp 
 
+	EOF	reduce by rule 27
+	COMMA	reduce by rule 27
+	SEMICOLON	reduce by rule 27
+	RPAREN	reduce by rule 27
+	RBRACK	reduce by rule 27
+	RBRACE	reduce by rule 27
 	PLUS	shift 41
 	MINUS	shift 40
 	TIMES	shift 39
 	DIVIDE	shift 38
-	EQ	shift 37
 	NEQ	shift 36
 	LT	shift 35
 	LE	shift 34
@@ -1233,9 +1238,18 @@ state 55:
 	GE	shift 32
 	AND	shift 31
 	OR	shift 30
+	THEN	reduce by rule 27
+	ELSE	reduce by rule 27
+	TO	reduce by rule 27
+	DO	reduce by rule 27
+	IN	reduce by rule 27
+	END	reduce by rule 27
+	FUNCTION	reduce by rule 27
+	VAR	reduce by rule 27
+	TYPE	reduce by rule 27
 
 
-	.	reduce by rule 27
+	.	error
 
 
 state 56:
@@ -1301,7 +1315,6 @@ state 58:
 	MINUS	shift 40
 	TIMES	shift 39
 	DIVIDE	shift 38
-	EQ	shift 37
 	NEQ	shift 36
 	LT	shift 35
 	LE	shift 34
@@ -1333,7 +1346,6 @@ state 59:
 	MINUS	shift 40
 	TIMES	shift 39
 	DIVIDE	shift 38
-	EQ	shift 37
 	NEQ	shift 36
 	LT	shift 35
 	LE	shift 34
@@ -1370,6 +1382,7 @@ state 60:
 	MINUS	shift 40
 	TIMES	shift 39
 	DIVIDE	shift 38
+	EQ	reduce by rule 39
 	AND	reduce by rule 39
 	OR	reduce by rule 39
 	THEN	reduce by rule 39
@@ -1412,6 +1425,7 @@ state 61:
 	MINUS	shift 40
 	TIMES	shift 39
 	DIVIDE	shift 38
+	EQ	reduce by rule 40
 	AND	reduce by rule 40
 	OR	reduce by rule 40
 	THEN	reduce by rule 40
@@ -1454,6 +1468,7 @@ state 62:
 	MINUS	shift 40
 	TIMES	shift 39
 	DIVIDE	shift 38
+	EQ	reduce by rule 41
 	AND	reduce by rule 41
 	OR	reduce by rule 41
 	THEN	reduce by rule 41
@@ -1496,6 +1511,7 @@ state 63:
 	MINUS	shift 40
 	TIMES	shift 39
 	DIVIDE	shift 38
+	EQ	reduce by rule 42
 	AND	reduce by rule 42
 	OR	reduce by rule 42
 	THEN	reduce by rule 42
@@ -1538,6 +1554,7 @@ state 64:
 	MINUS	shift 40
 	TIMES	shift 39
 	DIVIDE	shift 38
+	EQ	reduce by rule 43
 	AND	reduce by rule 43
 	OR	reduce by rule 43
 	THEN	reduce by rule 43
@@ -1580,6 +1597,7 @@ state 65:
 	MINUS	shift 40
 	TIMES	shift 39
 	DIVIDE	shift 38
+	EQ	reduce by rule 44
 	AND	reduce by rule 44
 	OR	reduce by rule 44
 	THEN	reduce by rule 44
@@ -2142,11 +2160,16 @@ state 94:
 	exp : exp . NEQ exp 
 	exp : exp . EQ exp 
 
+	EOF	reduce by rule 15
+	COMMA	reduce by rule 15
+	SEMICOLON	reduce by rule 15
+	RPAREN	reduce by rule 15
+	RBRACK	reduce by rule 15
+	RBRACE	reduce by rule 15
 	PLUS	shift 41
 	MINUS	shift 40
 	TIMES	shift 39
 	DIVIDE	shift 38
-	EQ	shift 37
 	NEQ	shift 36
 	LT	shift 35
 	LE	shift 34
@@ -2154,9 +2177,18 @@ state 94:
 	GE	shift 32
 	AND	shift 31
 	OR	shift 30
+	THEN	reduce by rule 15
+	ELSE	reduce by rule 15
+	TO	reduce by rule 15
+	DO	reduce by rule 15
+	IN	reduce by rule 15
+	END	reduce by rule 15
+	FUNCTION	reduce by rule 15
+	VAR	reduce by rule 15
+	TYPE	reduce by rule 15
 
 
-	.	reduce by rule 15
+	.	error
 
 
 state 95:
@@ -2251,11 +2283,16 @@ state 100:
 	exp : exp . EQ exp 
 	loop : WHILE exp DO exp .  (reduce by rule 66)
 
+	EOF	reduce by rule 66
+	COMMA	reduce by rule 66
+	SEMICOLON	reduce by rule 66
+	RPAREN	reduce by rule 66
+	RBRACK	reduce by rule 66
+	RBRACE	reduce by rule 66
 	PLUS	shift 41
 	MINUS	shift 40
 	TIMES	shift 39
 	DIVIDE	shift 38
-	EQ	shift 37
 	NEQ	shift 36
 	LT	shift 35
 	LE	shift 34
@@ -2263,9 +2300,18 @@ state 100:
 	GE	shift 32
 	AND	shift 31
 	OR	shift 30
+	THEN	reduce by rule 66
+	ELSE	reduce by rule 66
+	TO	reduce by rule 66
+	DO	reduce by rule 66
+	IN	reduce by rule 66
+	END	reduce by rule 66
+	FUNCTION	reduce by rule 66
+	VAR	reduce by rule 66
+	TYPE	reduce by rule 66
 
 
-	.	reduce by rule 66
+	.	error
 
 
 state 101:
@@ -2285,11 +2331,16 @@ state 101:
 	if : IF exp THEN exp . ELSE exp 
 	if : IF exp THEN exp .  (reduce by rule 65)
 
+	EOF	reduce by rule 65
+	COMMA	reduce by rule 65
+	SEMICOLON	reduce by rule 65
+	RPAREN	reduce by rule 65
+	RBRACK	reduce by rule 65
+	RBRACE	reduce by rule 65
 	PLUS	shift 41
 	MINUS	shift 40
 	TIMES	shift 39
 	DIVIDE	shift 38
-	EQ	shift 37
 	NEQ	shift 36
 	LT	shift 35
 	LE	shift 34
@@ -2297,10 +2348,18 @@ state 101:
 	GE	shift 32
 	AND	shift 31
 	OR	shift 30
+	THEN	reduce by rule 65
 	ELSE	shift 115
+	TO	reduce by rule 65
+	DO	reduce by rule 65
+	IN	reduce by rule 65
+	END	reduce by rule 65
+	FUNCTION	reduce by rule 65
+	VAR	reduce by rule 65
+	TYPE	reduce by rule 65
 
 
-	.	reduce by rule 65
+	.	error
 
 
 state 102:
@@ -2719,11 +2778,16 @@ state 122:
 	exp : exp . NEQ exp 
 	exp : exp . EQ exp 
 
+	EOF	reduce by rule 16
+	COMMA	reduce by rule 16
+	SEMICOLON	reduce by rule 16
+	RPAREN	reduce by rule 16
+	RBRACK	reduce by rule 16
+	RBRACE	reduce by rule 16
 	PLUS	shift 41
 	MINUS	shift 40
 	TIMES	shift 39
 	DIVIDE	shift 38
-	EQ	shift 37
 	NEQ	shift 36
 	LT	shift 35
 	LE	shift 34
@@ -2731,9 +2795,18 @@ state 122:
 	GE	shift 32
 	AND	shift 31
 	OR	shift 30
+	THEN	reduce by rule 16
+	ELSE	reduce by rule 16
+	TO	reduce by rule 16
+	DO	reduce by rule 16
+	IN	reduce by rule 16
+	END	reduce by rule 16
+	FUNCTION	reduce by rule 16
+	VAR	reduce by rule 16
+	TYPE	reduce by rule 16
 
 
-	.	reduce by rule 16
+	.	error
 
 
 state 123:
@@ -2847,7 +2920,6 @@ state 127:
 	MINUS	shift 40
 	TIMES	shift 39
 	DIVIDE	shift 38
-	EQ	shift 37
 	NEQ	shift 36
 	LT	shift 35
 	LE	shift 34
@@ -2887,11 +2959,16 @@ state 129:
 	exp : exp . EQ exp 
 	arraycreate : ID LBRACK exp RBRACK OF exp .  (reduce by rule 59)
 
+	EOF	reduce by rule 59
+	COMMA	reduce by rule 59
+	SEMICOLON	reduce by rule 59
+	RPAREN	reduce by rule 59
+	RBRACK	reduce by rule 59
+	RBRACE	reduce by rule 59
 	PLUS	shift 41
 	MINUS	shift 40
 	TIMES	shift 39
 	DIVIDE	shift 38
-	EQ	shift 37
 	NEQ	shift 36
 	LT	shift 35
 	LE	shift 34
@@ -2899,9 +2976,18 @@ state 129:
 	GE	shift 32
 	AND	shift 31
 	OR	shift 30
+	THEN	reduce by rule 59
+	ELSE	reduce by rule 59
+	TO	reduce by rule 59
+	DO	reduce by rule 59
+	IN	reduce by rule 59
+	END	reduce by rule 59
+	FUNCTION	reduce by rule 59
+	VAR	reduce by rule 59
+	TYPE	reduce by rule 59
 
 
-	.	reduce by rule 59
+	.	error
 
 
 state 130:
@@ -2930,8 +3016,13 @@ state 130:
 	MINUS	shift 40
 	TIMES	shift 39
 	DIVIDE	shift 38
-	AND	reduce by rule 17
-	OR	reduce by rule 17
+	NEQ	shift 36
+	LT	shift 35
+	LE	shift 34
+	GT	shift 33
+	GE	shift 32
+	AND	shift 31
+	OR	shift 30
 	THEN	reduce by rule 17
 	ELSE	reduce by rule 17
 	TO	reduce by rule 17
@@ -3082,11 +3173,16 @@ state 138:
 	exp : exp . EQ exp 
 	loop : FOR ID ASSIGN exp TO exp DO exp .  (reduce by rule 67)
 
+	EOF	reduce by rule 67
+	COMMA	reduce by rule 67
+	SEMICOLON	reduce by rule 67
+	RPAREN	reduce by rule 67
+	RBRACK	reduce by rule 67
+	RBRACE	reduce by rule 67
 	PLUS	shift 41
 	MINUS	shift 40
 	TIMES	shift 39
 	DIVIDE	shift 38
-	EQ	shift 37
 	NEQ	shift 36
 	LT	shift 35
 	LE	shift 34
@@ -3094,9 +3190,18 @@ state 138:
 	GE	shift 32
 	AND	shift 31
 	OR	shift 30
+	THEN	reduce by rule 67
+	ELSE	reduce by rule 67
+	TO	reduce by rule 67
+	DO	reduce by rule 67
+	IN	reduce by rule 67
+	END	reduce by rule 67
+	FUNCTION	reduce by rule 67
+	VAR	reduce by rule 67
+	TYPE	reduce by rule 67
 
 
-	.	reduce by rule 67
+	.	error
 
 
 state 139:
@@ -3125,8 +3230,13 @@ state 139:
 	MINUS	shift 40
 	TIMES	shift 39
 	DIVIDE	shift 38
-	AND	reduce by rule 18
-	OR	reduce by rule 18
+	NEQ	shift 36
+	LT	shift 35
+	LE	shift 34
+	GT	shift 33
+	GE	shift 32
+	AND	shift 31
+	OR	shift 30
 	THEN	reduce by rule 18
 	ELSE	reduce by rule 18
 	TO	reduce by rule 18
@@ -3181,5 +3291,5 @@ state 143:
 
 	.	error
 
-526 of 1133 action table entries left after compaction
+636 of 1243 action table entries left after compaction
 451 goto table entries
