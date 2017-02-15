@@ -1,26 +1,38 @@
 structure A = Absyn
-									
+val S = Symbol.symbol
+
 %%
 %term
     EOF
-  | ID of string
-  | INT of int | STRING of string
-  | COMMA | COLON | SEMICOLON | LPAREN | RPAREN | LBRACK | RBRACK
-  | LBRACE | RBRACE | DOT
+  | ID of string | INT of int | STRING of string
+  | COMMA | COLON | SEMICOLON | LPAREN | RPAREN | LBRACK | RBRACK | LBRACE | RBRACE | DOT
   | PLUS | MINUS | UMINUS | TIMES | DIVIDE | EQ | NEQ | LT | LE | GT | GE | EQUALS
-  | AND | OR | ASSIGN
+  | AND | OR | ASSIGN | FUNCTION | VAR | TYPE | BREAK | NIL
   | ARRAY | IF | THEN | ELSE | WHILE | FOR | TO | DO | LET | IN | END | OF
-  | BREAK | NIL
-  | FUNCTION | VAR | TYPE
 
 %nonterm
     program of A.exp
-	| decs | dec | tydec | vardec | fundec
-	| ty | tyfields | tyfields2
-	| exp | lvalue | expseq | expseq2
-	| funcall | funinputs
-  | arraycreate | recordcreate | recordinputs
-	| if | loop | let
+	| decs of A.dec list
+  | dec of A.dec
+  | tydec of {name: A.symbol, ty: A.ty, pos: A.pos} list
+  | vardec of A.dec
+  | fundec of A.fundec list
+	| ty of A.ty
+  | tyfields of A.field list
+  | tyfields2 of A.field list
+	| exp of A.exp
+  | lvalue of A.var
+  | expseq of A.exp
+  | expseq2 of (A.exp * A.pos) list
+	| funcall of A.exp
+  | funinputs of A.exp list
+  | operation of A.exp
+  | arraycreate of A.exp
+  | recordcreate of A.exp
+  | recordinputs of (A.symbol * A.exp * A.pos) list
+	| ifstm of A.exp
+  | loop of A.exp
+  | letstm of A.exp
 
 
 %pos int
@@ -40,7 +52,7 @@ structure A = Absyn
 %value STRING ("")
 
 %nonassoc ID
-%nonassoc ASSIGN EQ DO THEN OF LBRACK
+%nonassoc ASSIGN EQ DO THEN OF LBRACK FUNCTION TYPE
 %right ELSE
 %left OR
 %left AND
@@ -51,102 +63,96 @@ structure A = Absyn
 
 %%
 
-program : exp (A.NilExp)
+program : exp (exp)
 
-decs : decs dec ()
-     | ()
+exp : lvalue (A.VarExp(lvalue))
+    | NIL (A.NilExp)
+    | INT (A.IntExp(INT))
+    | STRING (A.StringExp(STRING,STRINGleft))
+    | funcall (funcall)
+    | operation (operation)
+    | recordcreate (recordcreate)
+    | LPAREN expseq RPAREN (expseq)
+    | lvalue ASSIGN exp (A.AssignExp({var=lvalue,exp=exp,pos=lvalueleft}))
+    | ifstm (ifstm)
+    | loop (loop)
+    | BREAK (A.BreakExp(BREAKleft))
+    | letstm (letstm)
+    | arraycreate (arraycreate)
 
-dec : tydec ()
-	  | vardec ()
-	  | fundec ()
+lvalue : ID (A.SimpleVar(S(ID),IDleft))
+       | lvalue DOT ID (A.FieldVar(lvalue,S(ID),lvalueleft))
+       | lvalue LBRACK exp RBRACK (A.SubscriptVar(lvalue,exp,lvalueleft))
+       | ID LBRACK exp RBRACK (A.SubscriptVar(A.SimpleVar(S(ID),IDleft),exp,IDleft))
 
-tydec : TYPE ID EQ ty ()
+funcall : ID LPAREN funinputs RPAREN (A.CallExp({func=S(ID),args=funinputs,pos=IDleft}))
+        | ID LPAREN RPAREN (A.CallExp({func=S(ID),args=[],pos=IDleft}))
 
-ty : ID ()
-	 | LBRACE tyfields RBRACE ()
-	 | ARRAY OF ID ()
+funinputs : exp COMMA funinputs (exp::funinputs)
+          | exp (exp::[])
 
-tyfields : ()
-				 | ID COLON ID ()
-				 | ID COLON ID tyfields2 ()
+operation : exp PLUS exp (A.OpExp({left=exp1,oper=A.PlusOp,right=exp2,pos=exp1left}))
+          | exp MINUS exp (A.OpExp({left=exp1,oper=A.MinusOp,right=exp2,pos=exp1left}))
+          | exp TIMES exp (A.OpExp({left=exp1,oper=A.TimesOp,right=exp2,pos=exp1left}))
+          | exp DIVIDE exp (A.OpExp({left=exp1,oper=A.DivideOp,right=exp2,pos=exp1left}))
+          | MINUS exp %prec UMINUS (A.OpExp({left=A.IntExp(0),oper=A.MinusOp,right=exp,pos=MINUSleft}))
+          | exp GE exp (A.OpExp({left=exp1,oper=A.GeOp,right=exp2,pos=exp1left}))
+          | exp GT exp (A.OpExp({left=exp1,oper=A.GtOp,right=exp2,pos=exp1left}))
+          | exp LE exp (A.OpExp({left=exp1,oper=A.LeOp,right=exp2,pos=exp1left}))
+          | exp LT exp (A.OpExp({left=exp1,oper=A.LtOp,right=exp2,pos=exp1left}))
+          | exp NEQ exp (A.OpExp({left=exp1,oper=A.NeqOp,right=exp2,pos=exp1left}))
+          | exp EQ exp %prec EQUALS (A.OpExp({left=exp1,oper=A.EqOp,right=exp2,pos=exp1left}))
+          | exp OR exp (A.IfExp({test=exp1,then'=A.IntExp(1),else'=SOME(exp2),pos=exp1left}))
+          | exp AND exp (A.IfExp({test=exp1,then'=exp2,else'=SOME(A.IntExp(0)),pos=exp1left}))
 
-tyfields2 : COMMA ID COLON ID ()
-          | COMMA ID COLON ID tyfields2 ()
+expseq : exp expseq2 (A.SeqExp((exp,expleft)::expseq2))
+       | exp (A.SeqExp([(exp,expleft)]))
+       | (A.SeqExp([]))
 
-vardec : VAR ID ASSIGN exp ()
-			 | VAR ID COLON ID ASSIGN exp ()
+expseq2 : SEMICOLON exp ((exp,expleft)::[])
+        | SEMICOLON exp expseq2 ((exp,expleft)::expseq2)
 
-fundec : FUNCTION ID LPAREN tyfields RPAREN EQ exp ()
-			 | FUNCTION ID LPAREN tyfields RPAREN COLON ID EQ exp ()
+recordcreate : ID LBRACE recordinputs RBRACE (A.RecordExp({fields=recordinputs,typ=S(ID),pos=IDleft}))
+             | ID LBRACE RBRACE (A.RecordExp({fields=[],typ=S(ID),pos=IDleft}))
 
-exp : let ()
-    | loop ()
-    | if ()
-    | dec ()
-    | funcall ()
-    | INT ()
-    | STRING ()
-    | lvalue ()
-    | lvalue ASSIGN exp ()
-    | arraycreate ()
-    | recordcreate ()
-    | NIL ()
-    | BREAK ()
-    | exp PLUS exp ()
-    | exp MINUS exp ()
-    | exp TIMES exp ()
-    | exp DIVIDE exp ()
-    | MINUS exp %prec UMINUS ()
-    | exp OR exp ()
-    | exp AND exp ()
-    | exp GE exp ()
-    | exp GT exp ()
-    | exp LE exp ()
-    | exp LT exp ()
-    | exp NEQ exp ()
-    | exp EQ exp %prec EQUALS ()
-    | LPAREN expseq RPAREN ()
+recordinputs : ID EQ exp ((S(ID),exp,IDleft)::[])
+             | ID EQ exp COMMA recordinputs ((S(ID),exp,IDleft)::recordinputs)
 
-lvalue : ID ()
-       | lvalue DOT ID ()
-       | lvalue LBRACK exp RBRACK ()
-       | ID LBRACK exp RBRACK ()
+ifstm : IF exp THEN exp (A.IfExp({test=exp1,then'=exp2,else'=NONE,pos=IFleft}))
+      | IF exp THEN exp ELSE exp (A.IfExp({test=exp1,then'=exp2,else'=SOME(exp3),pos=IFleft}))
 
-expseq : exp expseq2 ()
-       | exp ()
-       | ()
+loop : WHILE exp DO exp (A.WhileExp({test=exp1,body=exp2,pos=WHILEleft}))
+     | FOR ID ASSIGN exp TO exp DO exp (A.ForExp({var=S(ID),escape=ref true,lo=exp1,hi=exp2,body=exp3,pos=FORleft}))
 
-expseq2 : SEMICOLON exp ()
-        | SEMICOLON exp expseq2 ()
+letstm : LET decs IN expseq END (A.LetExp({decs=decs,body=expseq,pos=LETleft}))
 
-funcall : ID LPAREN funinputs RPAREN ()
-        | ID LPAREN RPAREN ()
+decs : decs dec (dec::decs)
+     | ([])
 
-funinputs : exp COMMA funinputs ()
-          | exp ()
+dec : tydec (A.TypeDec(tydec))
+	  | vardec (vardec)
+	  | fundec (A.FunctionDec(fundec))
 
-arraycreate : ID LBRACK exp RBRACK OF exp  ()
+tydec : TYPE ID EQ ty ({name=S(ID),ty=ty,pos=TYPEleft}::[])
+      | TYPE ID EQ ty tydec ({name=S(ID),ty=ty,pos=TYPEleft}::tydec)
 
-recordcreate : ID LBRACE recordinputs RBRACE ()
-             | ID LBRACE RBRACE ()
+ty : ID (A.NameTy(S(ID), IDleft))
+   | LBRACE tyfields RBRACE (A.RecordTy(tyfields))
+	 | ARRAY OF ID (A.ArrayTy(S(ID),ARRAYleft))
 
-recordinputs : ID EQ exp COMMA recordinputs ()
-             | ID EQ exp ()
+tyfields : ([])
+   			 | ID COLON ID ({name=S(ID1),escape=ref true,typ=S(ID2),pos=ID1left}::[])
+   			 | ID COLON ID tyfields2 ({name=S(ID1),escape=ref true,typ=S(ID2),pos=ID1left}::tyfields2)
 
-if : IF exp THEN exp ELSE exp ()
-   | IF exp THEN exp ()
+tyfields2 : COMMA ID COLON ID ({name=S(ID1),escape=ref true,typ=S(ID2),pos=ID1left}::[])
+          | COMMA ID COLON ID tyfields2 ({name=S(ID1),escape=ref true,typ=S(ID2),pos=ID1left}::tyfields2)
 
-loop : WHILE exp DO exp ()
-     | FOR ID ASSIGN exp TO exp DO exp ()
+vardec : VAR ID ASSIGN exp (A.VarDec({name=S(ID),escape=ref true,typ=NONE,init=exp,pos=VARleft}))
+       | VAR ID COLON ID ASSIGN exp (A.VarDec({name=S(ID1),escape=ref true,typ=SOME(S(ID2),ID2left),init=exp,pos=VARleft}))
 
-let : LET decs IN expseq END ()
+fundec : FUNCTION ID LPAREN tyfields RPAREN EQ exp ({name=S(ID),params=tyfields,result=NONE,body=exp,pos=FUNCTIONleft}::[])
+       | FUNCTION ID LPAREN tyfields RPAREN COLON ID EQ exp ({name=S(ID1),params=tyfields,result=SOME(S(ID2),ID2left),body=exp,pos=FUNCTIONleft}::[])
+       | FUNCTION ID LPAREN tyfields RPAREN EQ exp fundec ({name=S(ID),params=tyfields,result=NONE,body=exp,pos=FUNCTIONleft}::fundec)
+       | FUNCTION ID LPAREN tyfields RPAREN COLON ID EQ exp fundec ({name=S(ID1),params=tyfields,result=SOME(S(ID2),ID2left),body=exp,pos=FUNCTIONleft}::fundec)
 
-(* TODO
- * TEST ASSIGN for longer inputs
- *
- * Thoughts
- * lvalue (queens): originally wasn't working. Didn't know to reduce to id
- * precedence (merge) : line 9 thinks expression in function call is just ID
- *                      precedence with EQ fixed the problem
- * else : made right, not sure why
- *)
+arraycreate : ID LBRACK exp RBRACK OF exp  (A.ArrayExp({typ=S(ID),size=exp1,init=exp2,pos=IDleft}))
