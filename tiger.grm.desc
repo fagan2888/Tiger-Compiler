@@ -2370,13 +2370,11 @@ state 107:
 	tydec : TYPE ID EQ ty .  (reduce by rule 55)
 	tydec : TYPE ID EQ ty . tydec 
 
-	FUNCTION	reduce by rule 55
-	VAR	reduce by rule 55
-	IN	reduce by rule 55
+	TYPE	shift 66
 
 	tydec	goto 119
 
-	.	error
+	.	reduce by rule 55
 
 
 state 108:
@@ -2901,13 +2899,11 @@ state 134:
 	GE	shift 26
 	AND	shift 25
 	OR	shift 24
-	VAR	reduce by rule 67
-	TYPE	reduce by rule 67
-	IN	reduce by rule 67
+	FUNCTION	shift 68
 
 	fundec	goto 138
 
-	.	error
+	.	reduce by rule 67
 
 
 state 135:
@@ -3020,13 +3016,11 @@ state 141:
 	GE	shift 26
 	AND	shift 25
 	OR	shift 24
-	VAR	reduce by rule 68
-	TYPE	reduce by rule 68
-	IN	reduce by rule 68
+	FUNCTION	shift 68
 
 	fundec	goto 143
 
-	.	error
+	.	reduce by rule 68
 
 
 state 142:
@@ -3078,5 +3072,5 @@ state 146:
 
 	.	error
 
-580 of 1091 action table entries left after compaction
+574 of 1085 action table entries left after compaction
 346 goto table entries

@@ -34,7 +34,6 @@ val S = Symbol.symbol
   | loop of A.exp
   | letstm of A.exp
 
-
 %pos int
 %verbose
 %start program
@@ -52,7 +51,8 @@ val S = Symbol.symbol
 %value STRING ("")
 
 %nonassoc ID
-%nonassoc ASSIGN EQ DO THEN OF LBRACK FUNCTION TYPE
+%nonassoc ASSIGN EQ DO THEN OF LBRACK
+%right FUNCTION TYPE
 %right ELSE
 %left OR
 %left AND
@@ -60,7 +60,6 @@ val S = Symbol.symbol
 %left PLUS MINUS
 %left TIMES DIVIDE
 %left UMINUS
-
 %%
 
 program : exp (exp)
