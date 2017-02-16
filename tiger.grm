@@ -125,7 +125,7 @@ loop : WHILE exp DO exp (A.WhileExp({test=exp1,body=exp2,pos=WHILEleft}))
 
 letstm : LET decs IN expseq END (A.LetExp({decs=decs,body=expseq,pos=LETleft}))
 
-decs : decs dec (dec::decs)
+decs : dec decs (dec::decs)
      | ([])
 
 dec : tydec (A.TypeDec(tydec))
