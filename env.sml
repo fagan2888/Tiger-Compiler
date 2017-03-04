@@ -1,38 +1,35 @@
-structure S = Symbol
-structure T = Types
-
 signature ENV =
 sig
   type access
   type ty
   datatype enventry = VarEntry of {ty: ty}
                     | FunEntry of {formals: ty list, result: ty}
-  val base_tenv : ty S.table
-  val base_venv : enventry S.table
+  val base_tenv : ty Symbol.table
+  val base_venv : enventry Symbol.table
 end
 
 structure Env : ENV =
 struct
   type access = unit
-  type ty = T.ty
-  datatype enventry = VarEntry of {ty: T.ty}
-                    | FunEntry of {formals: T.ty list, result: T.ty}
+  type ty = Types.ty
+  datatype enventry = VarEntry of {ty: Types.ty}
+                    | FunEntry of {formals: Types.ty list, result: Types.ty}
 
-  fun insert ((name, info), table) = S.enter(table, S.symbol(name), info)
-  val base_tenv = foldl insert S.empty [("int",T.INT),("string",T.STRING)]
+  fun insert ((name, info), table) = Symbol.enter(table, Symbol.symbol(name), info)
+  val base_tenv = foldl insert Symbol.empty [("int",Types.INT),("string",Types.STRING)]
   val base_venv =
     let
-      val functions = [("print", FunEntry({formals=[T.STRING],result=T.UNIT})),
-                       ("flush",FunEntry({formals=[],result=T.UNIT})),
-                       ("getchar",FunEntry({formals=[],result=T.STRING})),
-                       ("ord",FunEntry({formals=[T.STRING],result=T.INT})),
-                       ("chr",FunEntry({formals=[T.INT],result=T.STRING})),
-                       ("size",FunEntry({formals=[T.STRING],result=T.INT})),
-                       ("substring",FunEntry({formals=[T.STRING,T.INT,T.INT],result=T.STRING})),
-                       ("concat",FunEntry({formals=[T.STRING,T.STRING],result=T.STRING})),
-                       ("not",FunEntry({formals=[T.INT],result=T.INT})),
-                       ("exit",FunEntry({formals=[T.INT],result=T.UNIT}))]
+      val functions = [("print", FunEntry({formals=[Types.STRING],result=Types.UNIT})),
+                       ("flush",FunEntry({formals=[],result=Types.UNIT})),
+                       ("getchar",FunEntry({formals=[],result=Types.STRING})),
+                       ("ord",FunEntry({formals=[Types.STRING],result=Types.INT})),
+                       ("chr",FunEntry({formals=[Types.INT],result=Types.STRING})),
+                       ("size",FunEntry({formals=[Types.STRING],result=Types.INT})),
+                       ("substring",FunEntry({formals=[Types.STRING,Types.INT,Types.INT],result=Types.STRING})),
+                       ("concat",FunEntry({formals=[Types.STRING,Types.STRING],result=Types.STRING})),
+                       ("not",FunEntry({formals=[Types.INT],result=Types.INT})),
+                       ("exit",FunEntry({formals=[Types.INT],result=Types.UNIT}))]
     in
-      foldl insert S.empty functions
+      foldl insert Symbol.empty functions
     end
 end
