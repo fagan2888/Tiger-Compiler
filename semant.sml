@@ -168,7 +168,7 @@ struct
       and check_if (exp1,exp2,exp3,pos) =
         (check_int (trexp exp1,pos);
          check_unit (trexp exp2,pos);
-         case exp3 of SOME exp => check_int (trexp exp,pos) | NONE => ();
+         case exp3 of SOME exp => check_unit (trexp exp,pos) | NONE => ();
          {exp=(), ty=T.UNIT})
 
       and check_while (exp1,exp2,pos) =
@@ -193,9 +193,18 @@ struct
 
       and check_array (typ,exp1,exp2,pos) = (case S.look(tenv, typ) of
           SOME t => (case actual_ty (t,pos) of
-            T.ARRAY(ty,_) => {exp=(), ty=T.NIL} (* TODO: check num arguments match, check that types match, change return *)
+            T.ARRAY(ty,_) => check_array_types (ty,exp1,exp2,pos)
           | _ => (ErrorMsg.error pos ("not array type: " ^ S.name(typ)); {exp=(), ty=T.UNIT}))
         | NONE => (ErrorMsg.error pos ("undefined array: " ^ S.name(typ)); {exp=(), ty=T.UNIT}))
+
+      and check_array_types (ty,exp1,exp2,pos) = (* check int exp1, check typ matches ty exp2, return *)
+        let
+          val {exp=_,ty=typ} = trexp exp2
+          val return_ty = if typ=ty then ty else (ErrorMsg.error pos ("array initialization does not match type"); T.UNIT)
+        in
+          (check_int (trexp exp1,pos);
+           {exp=(), ty=return_ty})
+        end
 
       and check_int ({exp=_,ty=T.INT},_) = ()
       	| check_int ({exp=_,ty=_},pos) = ErrorMsg.error pos "integer argument expected"
