@@ -15,8 +15,6 @@ struct
   type venv = E.enventry S.table
   type tenv = T.ty S.table
 
-  (* TODO: create unique for record creation and array creation (unit ref) *)
-
   fun transExp (venv, tenv) =
     let
       fun trexp (A.VarExp(var)) = trvar var
@@ -53,34 +51,67 @@ struct
           end
 
       and transDec (venv,tenv,A.TypeDec([])) = {venv=venv,tenv=tenv}
-        | transDec (venv,tenv,A.TypeDec({name,ty,pos}::tydecs)) = transDec (venv,create_type (tenv,name,ty),A.TypeDec(tydecs))
-        | transDec (venv,tenv,A.VarDec{name,escape,typ,init,pos}) = create_var(venv,tenv,name,escape,typ,init,pos)
+        | transDec (venv,tenv,A.TypeDec({name,ty,pos}::tydecs)) = transDec (venv,create_type (name,ty),A.TypeDec(tydecs))
+        | transDec (venv,tenv,A.VarDec{name,escape,typ,init,pos}) = {venv=create_var(venv,name,escape,typ,init,pos),tenv=tenv}
+        (* TODO: complete transdec for functions *)
 
-        (* TODO: complete transdec *)
-
-      and create_type (tenv,name,ty) = (case ty of
+      and create_type (name,ty) = (case ty of
           A.NameTy(s,p) => S.enter(tenv,name,T.NAME(s,ref NONE))
         | A.RecordTy(fieldlist) => S.enter(tenv,name,T.RECORD(create_fields fieldlist, ref ()))
-        | A.ArrayTy(s,p) => S.enter(tenv,name,T.NAME(name,ref NONE))) (* TODO: NOW*)
+        | A.ArrayTy(s,p) => S.enter(tenv,name,T.ARRAY(create_array (s,p),ref ())))
 
       and create_fields [] = []
-        | create_fields ({name,escape,typ,pos}::fieldlist) = (case S.look(venv, typ) of
-            SOME (E.VarEntry{ty}) => (name,ty)::(create_fields fieldlist)
-          | _ => (ErrorMsg.error pos ("undefined variable: " ^ S.name(typ)); (create_fields fieldlist)))
+        | create_fields ({name,escape,typ,pos}::fieldlist) = (case S.look(tenv, typ) of
+            SOME ty => (name,ty)::(create_fields fieldlist)
+          | _ => (ErrorMsg.error pos ("undefined type: " ^ S.name(typ)); (create_fields fieldlist)))
 
-      and create_var (venv,tenv,name,escape,typ,init,pos) =
+      and create_array (typ,pos) = (case S.look(tenv,typ) of
+          SOME ty => actual_ty (ty,pos)
+        | _ => (ErrorMsg.error pos ("undefined type: " ^ S.name(typ)); T.UNIT))
+
+      and create_var (venv,name,escape,typ,init,pos) =
         let
           val  {exp=_,ty=ty} = trexp init
-          (* TODO: Check that typ and init have same type*)
         in
-          {venv=S.enter(venv,name,E.VarEntry{ty=ty}),tenv=tenv}
+          ((case typ of
+              SOME (sym,p) => if (get_type (sym,p))=ty then () else ErrorMsg.error pos ("declared type and expression do not match")
+            | NONE => ());
+          S.enter(venv,name,E.VarEntry{ty=ty}))
         end
 
-      and trvar (A.SimpleVar(id,pos)) = (case S.look(venv, id) of
-            SOME (E.VarEntry{ty}) => {exp=(), ty=actual_ty (ty,pos)}
-          | _ => (ErrorMsg.error pos ("undefined variable: " ^ S.name(id)); {exp=(), ty=T.UNIT}))
-        | trvar (A.FieldVar(v,id,pos)) = trvar v (* TODO: check if id is part of record *)
-        | trvar (A.SubscriptVar(v,exp,pos)) = (check_int(trexp exp,pos); trvar v) (* TODO: make sure v is an array *)
+      and get_type (sym,pos) = (case S.look(tenv,sym) of
+            SOME ty => ty
+          | NONE => (ErrorMsg.error pos ("undefined type: " ^ S.name(sym)); Types.UNIT))
+
+      and trvar (A.SimpleVar(id,pos)) = check_simple_var (id,pos)
+        | trvar (A.FieldVar(v,id,pos)) = check_field_var (v,id,pos)
+        | trvar (A.SubscriptVar(v,exp,pos)) = check_subscript_var (v,exp,pos)
+
+      and check_simple_var (id,pos) = (case S.look(venv, id) of
+          SOME (E.VarEntry{ty}) => {exp=(), ty=actual_ty (ty,pos)}
+        | _ => (ErrorMsg.error pos ("undefined variable: " ^ S.name(id)); {exp=(), ty=T.UNIT}))
+
+      and check_field_var (var,id,pos) =
+        let
+          val {exp=_,ty=ty} = trvar var
+        in
+          (case actual_ty (ty,pos) of
+              T.RECORD(fieldlist,_) => fields_contain_sym (pos,fieldlist,id)
+            | _ => (ErrorMsg.error pos ("variable not a record"); {exp=(), ty=T.UNIT})) (* IMPROVE: error message *)
+        end
+
+      and fields_contain_sym (pos,[],sym) = (ErrorMsg.error pos ("undefined record field : " ^ S.name(sym)); {exp=(), ty=T.UNIT})
+        | fields_contain_sym (pos,(id,ty)::fieldlist,sym) = if sym=id then {exp=(), ty=ty} else fields_contain_sym (pos,fieldlist,sym)
+
+      and check_subscript_var (var,exp,pos) =
+        let
+          val _ = check_int(trexp exp,pos)
+          val {exp=_,ty=ty} = trvar var
+        in
+          (case actual_ty (ty,pos) of
+              T.ARRAY(ty,_) => {exp=(), ty=ty}
+            | _ => (ErrorMsg.error pos ("variable not an array"); {exp=(), ty=T.UNIT})) (* IMPROVE: error message *)
+        end
 
       and actual_ty (ty,pos) =
         let
@@ -99,9 +130,26 @@ struct
 
       and check_record (fields,typ,pos) = (case S.look(tenv, typ) of
           SOME t => (case actual_ty (t,pos) of
-              T.RECORD(typelist,_) => {exp=(), ty=T.NIL} (* TODO: check num arguments match, check that types match, change return *)
+              T.RECORD(typelist,_) => check_field_types (fields, typelist, pos, typ)
             | _ => (ErrorMsg.error pos ("not record type: " ^ S.name(typ)); {exp=(), ty=T.UNIT}))
         | NONE => (ErrorMsg.error pos ("undefined record: " ^ S.name(typ)); {exp=(), ty=T.UNIT}))
+
+      and check_field_types (fields, types, pos, record_ty) =
+        let
+          val return_ty = if List.length(fields)=List.length(types) then get_type (record_ty,pos) else (ErrorMsg.error pos ("incorrect number of record fields"); T.UNIT) (* IMPROVE: error message, check duplicates and num *)
+          fun compare_field_types ((sym,exp,pos)::fields, types) = if type_exists (sym,exp,types) then compare_field_types (fields, types) else false
+            | compare_field_types ([], types) = true
+          and type_exists (sym,exp,(s,t)::types) = if (S.name sym)=(S.name s) andalso exp_matches (exp,t) then true else type_exists (sym,exp,types)
+            | type_exists (sym,exp,[]) = (ErrorMsg.error pos ("record field does not exist"); false) (* IMPROVE: error message *)
+          and exp_matches (exp,ty) =
+            let
+              val {exp=_,ty=typ} = trexp exp
+            in
+              if ty=typ then true else (ErrorMsg.error pos ("record field type does not match expression"); false) (* IMPROVE: error message *)
+            end
+        in
+          if compare_field_types (fields, types) then {exp=(), ty=return_ty} else {exp=(), ty=T.UNIT}
+        end
 
       and check_sequence [] = {exp=(), ty=Types.UNIT}
         | check_sequence ((exp, _)::nil) = trexp exp
@@ -109,11 +157,11 @@ struct
 
       and check_assign (var,exp,pos) =
         let
-          val  {exp=_,ty=tyl} = trvar var
-          val  {exp=_,ty=tyr} = trexp exp
+          val {exp=_,ty=tyl} = trvar var
+          val {exp=_,ty=tyr} = trexp exp
         in
           if tyl<>tyr
-          then (ErrorMsg.error pos ("variable and expresion of different type"); {exp=(), ty=T.UNIT}) (* TODO: change error message *)
+          then (ErrorMsg.error pos ("variable and expresion of different type"); {exp=(), ty=T.UNIT}) (* IMPROVE: error message *)
           else {exp=(), ty=T.UNIT}
         end
 
