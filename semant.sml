@@ -15,6 +15,8 @@ struct
   type venv = E.enventry S.table
   type tenv = T.ty S.table
 
+  (* TODO: create unique for record creation and array creation (unit ref) *)
+
   fun transExp (venv, tenv) =
     let
       fun trexp (A.VarExp(var)) = trvar var
@@ -51,9 +53,28 @@ struct
           end
 
       and transDec (venv,tenv,A.TypeDec([])) = {venv=venv,tenv=tenv}
-        | transDec (venv,tenv,A.TypeDec({name,ty,pos}::tydecs)) = transDec (venv,S.enter(tenv,name,T.NAME(name,ref NONE)),A.TypeDec(tydecs))
+        | transDec (venv,tenv,A.TypeDec({name,ty,pos}::tydecs)) = transDec (venv,create_type (tenv,name,ty),A.TypeDec(tydecs))
+        | transDec (venv,tenv,A.VarDec{name,escape,typ,init,pos}) = create_var(venv,tenv,name,escape,typ,init,pos)
 
         (* TODO: complete transdec *)
+
+      and create_type (tenv,name,ty) = (case ty of
+          A.NameTy(s,p) => S.enter(tenv,name,T.NAME(s,ref NONE))
+        | A.RecordTy(fieldlist) => S.enter(tenv,name,T.RECORD(create_fields fieldlist, ref ()))
+        | A.ArrayTy(s,p) => S.enter(tenv,name,T.NAME(name,ref NONE))) (* TODO: NOW*)
+
+      and create_fields [] = []
+        | create_fields ({name,escape,typ,pos}::fieldlist) = (case S.look(venv, typ) of
+            SOME (E.VarEntry{ty}) => (name,ty)::(create_fields fieldlist)
+          | _ => (ErrorMsg.error pos ("undefined variable: " ^ S.name(typ)); (create_fields fieldlist)))
+
+      and create_var (venv,tenv,name,escape,typ,init,pos) =
+        let
+          val  {exp=_,ty=ty} = trexp init
+          (* TODO: Check that typ and init have same type*)
+        in
+          {venv=S.enter(venv,name,E.VarEntry{ty=ty}),tenv=tenv}
+        end
 
       and trvar (A.SimpleVar(id,pos)) = (case S.look(venv, id) of
             SOME (E.VarEntry{ty}) => {exp=(), ty=actual_ty (ty,pos)}
