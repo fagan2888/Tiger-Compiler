@@ -42,7 +42,18 @@ struct
         | trexp (A.LetExp{decs=decs,body=expseq,pos=pos}) = check_let (decs,expseq,pos)
         | trexp (A.ArrayExp{typ=typ,size=exp1,init=exp2,pos=pos}) = check_array (typ,exp1,exp2,pos)
 
-      and transDecs (venv,tenv,decs) = {venv=venv,tenv=tenv} (* TODO: complete transdecs and transdec *)
+      and transDecs (venv,tenv,[]) = {venv=venv,tenv=tenv}
+        | transDecs (venv,tenv,dec::decs) =
+          let
+            val {venv=new_venv,tenv=new_tenv} = transDec (venv,tenv,dec)
+          in
+            transDecs (new_venv,new_tenv,decs)
+          end
+
+      and transDec (venv,tenv,A.TypeDec([])) = {venv=venv,tenv=tenv}
+        | transDec (venv,tenv,A.TypeDec({name,ty,pos}::tydecs)) = transDec (venv,S.enter(tenv,name,T.NAME(name,ref NONE)),A.TypeDec(tydecs))
+
+        (* TODO: complete transdec *)
 
       and trvar (A.SimpleVar(id,pos)) = (case S.look(venv, id) of
             SOME (E.VarEntry{ty}) => {exp=(), ty=actual_ty (ty,pos)}
@@ -98,8 +109,8 @@ struct
 
       and check_for (var,exp1,exp2,exp3,pos) =
         (check_int (trexp exp1,pos);
-         check_int (trexp exp2,pos); (* TODO: check high and low values *)
-         check_unit (transExp(S.enter(venv,var,Env.VarEntry{ty=Types.INT}),tenv) exp3,pos);
+         check_int (trexp exp2,pos);
+         check_unit (transExp(S.enter(venv,var,E.VarEntry{ty=T.INT}),tenv) exp3,pos);
          {exp=(), ty=T.UNIT})
 
       and check_break (pos) = {exp=(), ty=T.UNIT} (* TODO: check inside for or while *)
@@ -112,7 +123,7 @@ struct
         end
 
       and check_array (typ,exp1,exp2,pos) = (case S.look(tenv, typ) of
-        SOME t => (case actual_ty (t,pos) of
+          SOME t => (case actual_ty (t,pos) of
             T.ARRAY(ty,_) => {exp=(), ty=T.NIL} (* TODO: check num arguments match, check that types match, change return *)
           | _ => (ErrorMsg.error pos ("not array type: " ^ S.name(typ)); {exp=(), ty=T.UNIT}))
         | NONE => (ErrorMsg.error pos ("undefined array: " ^ S.name(typ)); {exp=(), ty=T.UNIT}))
