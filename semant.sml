@@ -51,35 +51,37 @@ struct
           end
 
       and transDec (venv,tenv,A.TypeDec([])) = {venv=venv,tenv=tenv}
-        | transDec (venv,tenv,A.TypeDec({name,ty,pos}::tydecs)) = transDec (venv,create_type (name,ty),A.TypeDec(tydecs))
-        | transDec (venv,tenv,A.VarDec{name,escape,typ,init,pos}) = {venv=create_var(venv,name,escape,typ,init,pos),tenv=tenv}
+        | transDec (venv,tenv,A.TypeDec({name,ty,pos}::tydecs)) = transDec (venv,create_type (tenv,name,ty,pos), A.TypeDec(tydecs))
+        | transDec (venv,tenv,A.VarDec{name,escape,typ,init,pos}) = {venv=create_var(venv,tenv,name,escape,typ,init,pos),tenv=tenv}
         (* TODO: complete transdec for functions *)
 
-      and create_type (name,ty) = (case ty of
-          A.NameTy(s,p) => S.enter(tenv,name,T.NAME(s,ref NONE))
+      and create_type (tenv,name,ty,pos) = (case ty of
+          A.NameTy(s,p) => (case S.look(tenv,s) of
+              SOME ty => S.enter(tenv,name,ty)
+            | NONE => (ErrorMsg.error pos ("undefined type: " ^ S.name(s)); tenv))
         | A.RecordTy(fieldlist) => S.enter(tenv,name,T.RECORD(create_fields fieldlist, ref ()))
-        | A.ArrayTy(s,p) => S.enter(tenv,name,T.ARRAY(create_array (s,p),ref ())))
+        | A.ArrayTy(s,p) => S.enter(tenv,name,T.ARRAY(create_array (tenv,s,p),ref ())))
 
       and create_fields [] = []
         | create_fields ({name,escape,typ,pos}::fieldlist) = (case S.look(tenv, typ) of
             SOME ty => (name,ty)::(create_fields fieldlist)
           | _ => (ErrorMsg.error pos ("undefined type: " ^ S.name(typ)); (create_fields fieldlist)))
 
-      and create_array (typ,pos) = (case S.look(tenv,typ) of
+      and create_array (tenv,typ,pos) = (case S.look(tenv,typ) of
           SOME ty => actual_ty (ty,pos)
         | _ => (ErrorMsg.error pos ("undefined type: " ^ S.name(typ)); T.UNIT))
 
-      and create_var (venv,name,escape,typ,init,pos) =
+      and create_var (venv,tenv,name,escape,typ,init,pos) =
         let
-          val  {exp=_,ty=ty} = trexp init
+          val  {exp=_,ty=ty} = transExp (venv,tenv) init
         in
           ((case typ of
-              SOME (sym,p) => if (get_type (sym,p))=ty then () else ErrorMsg.error pos ("declared type and expression do not match")
+              SOME (sym,p) => if (get_type (tenv,sym,p))=ty then () else ErrorMsg.error pos ("declared type and expression do not match")
             | NONE => ());
           S.enter(venv,name,E.VarEntry{ty=ty}))
         end
 
-      and get_type (sym,pos) = (case S.look(tenv,sym) of
+      and get_type (tenv,sym,pos) = (case S.look(tenv,sym) of
             SOME ty => ty
           | NONE => (ErrorMsg.error pos ("undefined type: " ^ S.name(sym)); Types.UNIT))
 
@@ -136,7 +138,7 @@ struct
 
       and check_field_types (fields, types, pos, record_ty) =
         let
-          val return_ty = if List.length(fields)=List.length(types) then get_type (record_ty,pos) else (ErrorMsg.error pos ("incorrect number of record fields"); T.UNIT) (* IMPROVE: error message, check duplicates and num *)
+          val return_ty = if List.length(fields)=List.length(types) then get_type (tenv,record_ty,pos) else (ErrorMsg.error pos ("incorrect number of record fields"); T.UNIT) (* IMPROVE: error message, check duplicates and num *)
           fun compare_field_types ((sym,exp,pos)::fields, types) = if type_exists (sym,exp,types) then compare_field_types (fields, types) else false
             | compare_field_types ([], types) = true
           and type_exists (sym,exp,(s,t)::types) = if (S.name sym)=(S.name s) andalso exp_matches (exp,t) then true else type_exists (sym,exp,types)
@@ -199,11 +201,11 @@ struct
 
       and check_array (typ,exp1,exp2,pos) = (case S.look(tenv, typ) of
           SOME t => (case actual_ty (t,pos) of
-            T.ARRAY(ty,_) => check_array_types (ty,exp1,exp2,pos)
+            T.ARRAY(ty,_) => (check_array_init (ty,exp1,exp2,pos); {exp=(), ty=t})
           | _ => (ErrorMsg.error pos ("not array type: " ^ S.name(typ)); {exp=(), ty=T.UNIT}))
         | NONE => (ErrorMsg.error pos ("undefined array: " ^ S.name(typ)); {exp=(), ty=T.UNIT}))
 
-      and check_array_types (ty,exp1,exp2,pos) = (* check int exp1, check typ matches ty exp2, return *)
+      and check_array_init (ty,exp1,exp2,pos) =
         let
           val {exp=_,ty=typ} = trexp exp2
           val return_ty = if typ=ty then ty else (ErrorMsg.error pos ("array initialization does not match type"); T.UNIT)
