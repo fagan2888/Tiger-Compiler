@@ -11,6 +11,7 @@ struct
           | ARRAY of ty * unique
 	        | NAME of Symbol.symbol * ty option ref
 	        | UNIT
+          | BOTTOM
 
   fun print_ty ty = (case ty of
     RECORD (a,b) => print "record\n"
@@ -20,6 +21,7 @@ struct
   | ARRAY (a,b) => print "array\n"
   | NAME (a,b) => print "name\n"
   | UNIT => print "unit\n"
+  | BOTTOM => print "bottom\n"
   )
 
 end
