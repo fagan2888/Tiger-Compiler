@@ -31,8 +31,8 @@ struct
 				| trexp (A.OpExp{left,oper=A.MinusOp,right,pos}) = (check_int(trexp left, pos); check_int(trexp right, pos); {exp = (), ty=T.INT})
 				| trexp (A.OpExp{left,oper=A.TimesOp,right,pos}) = (check_int(trexp left, pos); check_int(trexp right, pos); {exp = (), ty=T.INT})
 				| trexp (A.OpExp{left,oper=A.DivideOp,right,pos}) = (check_int(trexp left, pos); check_int(trexp right, pos); {exp = (), ty=T.INT})
-				| trexp (A.OpExp{left,oper=A.EqOp,right,pos}) = (check_int(trexp left, pos); check_int(trexp right, pos); {exp = (), ty=T.INT})
-				| trexp (A.OpExp{left,oper=A.NeqOp,right,pos}) = (check_int(trexp left, pos); check_int(trexp right, pos); {exp = (), ty=T.INT})
+				| trexp (A.OpExp{left,oper=A.EqOp,right,pos}) = check_comparision (left, right, pos)
+				| trexp (A.OpExp{left,oper=A.NeqOp,right,pos}) = check_comparision (left, right, pos)
 				| trexp (A.OpExp{left,oper=A.LtOp,right,pos}) = (check_int(trexp left, pos); check_int(trexp right, pos); {exp = (), ty=T.INT})
 				| trexp (A.OpExp{left,oper=A.GtOp,right,pos}) = (check_int(trexp left, pos); check_int(trexp right, pos); {exp = (), ty=T.INT})
 				| trexp (A.OpExp{left,oper=A.LeOp,right,pos}) = (check_int(trexp left, pos); check_int(trexp right, pos); {exp = (), ty=T.INT})
@@ -90,7 +90,11 @@ struct
           end
         | transDec (venv,tenv,A.FunctionDec[]) = {venv=venv,tenv=tenv}
 
-      and types_equal (t1,t2) = if t1<>T.BOTTOM andalso t2<>T.BOTTOM andalso t1<>t2 then false else true
+      and types_equal (t1,t2) = (case t1 of
+        T.RECORD(l,u) => if t2=T.NIL then true else false
+        | T.NIL => (case t2 of T.NIL => true | T.RECORD(l,u) => true | _ => false)
+        | T.BOTTOM => true
+        | _ => (case t2 of T.BOTTOM => true | _ => t1=t2))
 
       and create_type (tenv,name,ty,pos) = (case ty of
           A.NameTy(s,p) => (case S.look(tenv,s) of
@@ -230,7 +234,7 @@ struct
                 val {exp=_,ty=ty2} = trexp exp2
                 val {exp=_,ty=ty3} = trexp exp
               in
-                if types_equal(ty2,ty3) then {exp=(), ty=ty2} else (ErrorMsg.error pos ("types of then - else differ");{exp=(), ty=T.BOTTOM})
+                if types_equal(ty2,ty3) then {exp=(), ty=ty2} else (ErrorMsg.error pos ("types of then - else differ");{exp=(), ty=T.BOTTOM}) (* IMPROVE: what if the type ty2 is a subtype (want supertype)*)
               end
           | NONE => (check_unit (trexp exp2,pos); {exp=(), ty=T.UNIT})))
 
@@ -287,6 +291,14 @@ struct
       and check_unit ({exp=_,ty=T.UNIT},_) = ()
         | check_unit ({exp=_,ty=T.BOTTOM},_) = ()
         | check_unit ({exp=_,ty=_},pos) = ErrorMsg.error pos "unit argument expected"
+
+      and check_comparision (exp1,exp2,pos) =
+        let
+          val {exp=_,ty=ty1} = trexp exp1
+          val {exp=_,ty=ty2} = trexp exp2
+        in
+          if types_equal (ty1,ty2) then {exp=(),ty=ty1} else {exp=(),ty=T.BOTTOM} (* IMPROVE: what if the type ty1 is a subtype (want supertype)*)
+        end
     in
       trexp
     end
