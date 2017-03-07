@@ -17,6 +17,9 @@ struct
 
   val depth = ref 0
 
+  (* TODO: mutual recursion *)
+  (* TODO: polymorphic type inference *)
+
   fun transExp (venv, tenv) =
     let
       fun trexp (A.VarExp(var)) = trvar var
@@ -163,8 +166,23 @@ struct
         end
 
       and check_func (func,args,pos) =  (case S.look(venv, func) of
-          SOME (E.FunEntry{formals=tylist, result=ty}) => {exp=(), ty=T.NIL} (* TODO: check num arguments match, check that types match, check return, change return *)
+          SOME (E.FunEntry{formals=tylist, result=ty}) => check_args(args,tylist,ty,pos)
         | _ => (ErrorMsg.error pos ("undefined function: " ^ S.name(func)); {exp=(), ty=T.BOTTOM}))
+
+      and check_args (args,tylist,ty,pos) =
+        let
+          fun check_arg_types ((exp::exps),(t::tys)) =
+            let
+              val {exp=_,ty=typ} = trexp exp
+            in
+              if types_equal(typ,t) then check_arg_types (exps,tys) else (ErrorMsg.error pos ("argument type does not match declared type"); false)
+            end
+          | check_arg_types ([],[]) = true
+          | check_arg_types (_,_) = false
+          val return_ty = if List.length(tylist)=List.length(args) then (if check_arg_types(args,tylist) then ty else T.BOTTOM) else (ErrorMsg.error pos ("incorrect number of arguments"); T.BOTTOM)
+        in
+          {exp=(), ty=return_ty}
+        end
 
       and check_record (fields,typ,pos) = (case S.look(tenv, typ) of
           SOME t => (case actual_ty (t,pos) of
