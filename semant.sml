@@ -17,6 +17,8 @@ struct
   type venv = E.enventry S.table
   type tenv = T.ty S.table
 
+  val depth = ref 0
+
   fun transExp (venv, tenv) =
     let
       fun trexp (A.VarExp(var)) = trvar var
@@ -212,21 +214,31 @@ struct
           | NONE => (check_unit (trexp exp2,pos); {exp=(), ty=T.UNIT})))
 
       and check_while (exp1,exp2,pos) =
-        (check_int (trexp exp1,pos);
+        (depth := !depth + 1;
+         check_int (trexp exp1,pos);
          check_unit (trexp exp2,pos);
+         depth := !depth - 1;
          {exp=(), ty=T.UNIT})
 
       and check_for (var,exp1,exp2,exp3,pos) =
-        (check_int (trexp exp1,pos);
+        (depth := !depth + 1;
+         check_int (trexp exp1,pos);
          check_int (trexp exp2,pos);
          check_unit (transExp(S.enter(venv,var,E.VarEntry{ty=T.INT}),tenv) exp3,pos);
+         depth := !depth - 1;
          {exp=(), ty=T.UNIT})
 
-      and check_break (pos) = {exp=(), ty=T.UNIT} (* TODO: check inside for or while *)
+      and check_break (pos) =
+        (if !depth>0 then () else ErrorMsg.error pos ("break must be inside loop");
+         {exp=(), ty=T.UNIT}) (* TODO: check inside for or while *)
 
       and check_let (decs,expseq,pos) =
         let
+          val curr_depth = depth
+          val _ = depth := 0
           val {venv=new_venv,tenv=new_tenv} = transDecs (venv,tenv,decs)
+          val _ = depth := !curr_depth
+
         in
           transExp (new_venv,new_tenv) expseq
         end
