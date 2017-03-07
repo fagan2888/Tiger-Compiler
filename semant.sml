@@ -76,10 +76,10 @@ struct
             fun transparam {name,escape,typ,pos} =
               case S.look(tenv,typ) of
                 SOME t => {name=name,ty=t}
-                | _  => (ErrorMsg.error pos ("undefined type: " ^ S.name(typ)); {name=name,ty=T.UNIT})
+                | _  => (ErrorMsg.error pos ("undefined type: " ^ S.name(typ)); {name=name,ty=T.BOTTOM})
             val params' = map transparam params
             fun enterparam ({name,ty},venv) = S.enter(venv,name, E.VarEntry{ty=ty})
-            val venv' = S.enter(venv,name, E.FunEntry{formals=map #ty params', result=T.UNIT}) (* IMPROVE: Use bottom type *)
+            val venv' = S.enter(venv,name, E.FunEntry{formals=map #ty params', result=T.BOTTOM}) (* IMPROVE: Use bottom type *)
             val venv'' = foldl enterparam venv' params'
             val  {exp=_,ty=body_ty} = transExp(venv'',tenv) body;
           in
@@ -263,9 +263,11 @@ struct
         end
 
       and check_int ({exp=_,ty=T.INT},_) = ()
+        | check_int ({exp=_,ty=T.BOTTOM},_) = ()
       	| check_int ({exp=_,ty=_},pos) = ErrorMsg.error pos "integer argument expected"
 
       and check_unit ({exp=_,ty=T.UNIT},_) = ()
+        | check_unit ({exp=_,ty=T.BOTTOM},_) = ()
         | check_unit ({exp=_,ty=_},pos) = ErrorMsg.error pos "unit argument expected"
     in
       trexp
