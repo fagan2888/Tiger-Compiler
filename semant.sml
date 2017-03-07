@@ -167,9 +167,15 @@ struct
 
       and check_if (exp1,exp2,exp3,pos) =
         (check_int (trexp exp1,pos);
-         check_unit (trexp exp2,pos);
-         case exp3 of SOME exp => check_unit (trexp exp,pos) | NONE => ();
-         {exp=(), ty=T.UNIT})
+        (case exp3 of
+            SOME exp =>
+              let
+                val {exp=_,ty=ty2} = trexp exp2
+                val {exp=_,ty=ty3} = trexp exp
+              in
+                if ty2=ty3 then {exp=(), ty=ty2} else (ErrorMsg.error pos ("types of then - else differ");{exp=(), ty=T.UNIT})
+              end
+          | NONE => (check_unit (trexp exp2,pos); {exp=(), ty=T.UNIT})))
 
       and check_while (exp1,exp2,pos) =
         (check_int (trexp exp1,pos);
