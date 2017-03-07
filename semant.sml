@@ -8,6 +8,8 @@ sig
   val transProg : A.exp -> unit
 end
 
+(* IMPROVE: Use bottom type *)
+
 structure Semant : SEMANT =
 struct
   structure Translate = struct type exp = unit end
@@ -53,7 +55,37 @@ struct
       and transDec (venv,tenv,A.TypeDec([])) = {venv=venv,tenv=tenv}
         | transDec (venv,tenv,A.TypeDec({name,ty,pos}::tydecs)) = transDec (venv,create_type (tenv,name,ty,pos), A.TypeDec(tydecs))
         | transDec (venv,tenv,A.VarDec{name,escape,typ,init,pos}) = {venv=create_var(venv,tenv,name,escape,typ,init,pos),tenv=tenv}
-        (* TODO: complete transdec for functions *)
+        | transDec (venv,tenv,A.FunctionDec({name,params,body,pos,result=SOME(rt,pos')}::fundecs)) =
+					let
+            val SOME(result_ty) = S.look(tenv,rt)
+						fun transparam {name,escape,typ,pos} =
+							case S.look(tenv,typ) of
+                SOME t => {name=name,ty=t}
+							  | _  => (ErrorMsg.error pos ("undefined type: " ^ S.name(typ)); {name=name,ty=T.UNIT})
+						val params' = map transparam params
+						val venv' = S.enter(venv,name, E.FunEntry{formals=map #ty params', result=result_ty})
+						fun enterparam ({name,ty},venv) = S.enter(venv,name, E.VarEntry{ty=ty})
+						val venv'' = foldl enterparam venv' params'
+            val  {exp=_,ty=body_ty} = transExp(venv'',tenv) body;
+            val _ = if body_ty=result_ty then () else ErrorMsg.error pos ("declared function type and expression do not match")
+					in
+						transDec(venv',tenv, A.FunctionDec(fundecs))
+					end
+        | transDec (venv,tenv,A.FunctionDec({name,params,body,pos,result=NONE}::fundecs)) =
+          let
+            fun transparam {name,escape,typ,pos} =
+              case S.look(tenv,typ) of
+                SOME t => {name=name,ty=t}
+                | _  => (ErrorMsg.error pos ("undefined type: " ^ S.name(typ)); {name=name,ty=T.UNIT})
+            val params' = map transparam params
+            fun enterparam ({name,ty},venv) = S.enter(venv,name, E.VarEntry{ty=ty})
+            val venv' = S.enter(venv,name, E.FunEntry{formals=map #ty params', result=T.UNIT}) (* IMPROVE: Use bottom type *)
+            val venv'' = foldl enterparam venv' params'
+            val  {exp=_,ty=body_ty} = transExp(venv'',tenv) body;
+        in
+          transDec(venv',tenv, A.FunctionDec(fundecs))
+        end
+        | transDec (venv,tenv,A.FunctionDec[]) = {venv=venv,tenv=tenv}
 
       and create_type (tenv,name,ty,pos) = (case ty of
           A.NameTy(s,p) => (case S.look(tenv,s) of
