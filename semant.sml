@@ -230,7 +230,7 @@ struct
 
       and check_break (pos) =
         (if !depth>0 then () else ErrorMsg.error pos ("break must be inside loop");
-         {exp=(), ty=T.UNIT}) (* TODO: check inside for or while *)
+         {exp=(), ty=T.UNIT})
 
       and check_let (decs,expseq,pos) =
         let
