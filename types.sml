@@ -13,15 +13,15 @@ struct
 	        | UNIT
           | BOTTOM
 
-  fun print_ty ty = (case ty of
-    RECORD (a,b) => print "record\n"
-  | NIL => print "nil\n"
-  | INT => print "int\n"
-  | STRING => print "string\n"
-  | ARRAY (a,b) => print "array\n"
-  | NAME (a,b) => print "name\n"
-  | UNIT => print "unit\n"
-  | BOTTOM => print "bottom\n"
+  fun name ty = (case ty of
+    RECORD (a,b) => "record"
+  | NIL => "nil"
+  | INT => "int"
+  | STRING => "string"
+  | ARRAY (a,b) => "array"
+  | NAME (a,b) => ("name " ^ Symbol.name(a))
+  | UNIT => "unit"
+  | BOTTOM => "bottom"
   )
 
 end

@@ -17,7 +17,7 @@ struct
 
   val depth = ref 0
 
-  (* TODO: mutual recursion *)
+  (* TODO: function mutual recursion *)
   (* TODO: polymorphic type inference *)
 
   fun transExp (venv, tenv) =
@@ -51,12 +51,12 @@ struct
         | transDecs (venv,tenv,dec::decs) =
           let
             val {venv=new_venv,tenv=new_tenv} = transDec (venv,tenv,dec)
+            (* TODO: circular linked types - maybe in actual_type function keep already visited and throw error if already visited *)
           in
             transDecs (new_venv,new_tenv,decs)
           end
 
-      and transDec (venv,tenv,A.TypeDec([])) = {venv=venv,tenv=tenv}
-        | transDec (venv,tenv,A.TypeDec({name,ty,pos}::tydecs)) = transDec (venv,create_type (tenv,name,ty,pos), A.TypeDec(tydecs))
+      and transDec (venv,tenv,A.TypeDec(tydecs)) = {venv=venv,tenv=(recursive_type_body ((recursive_type_dec (tenv,tydecs)),tydecs))}
         | transDec (venv,tenv,A.VarDec{name,escape,typ,init,pos}) = {venv=create_var(venv,tenv,name,escape,typ,init,pos),tenv=tenv}
         | transDec (venv,tenv,A.FunctionDec({name,params,body,pos,result=SOME(rt,pos')}::fundecs)) =
 					let
@@ -90,18 +90,30 @@ struct
           end
         | transDec (venv,tenv,A.FunctionDec[]) = {venv=venv,tenv=tenv}
 
+      and recursive_type_dec (tenv,[]) = tenv
+        | recursive_type_dec (tenv,({name,ty,pos}::tydecs)) = (case S.look(tenv,name) of
+            SOME t => (ErrorMsg.error pos ("type already exists: " ^ S.name(name)); recursive_type_dec(tenv,tydecs))
+            | NONE => S.enter(recursive_type_dec(tenv,tydecs),name,T.NAME(name, ref NONE)))
+
+      and recursive_type_body (tenv,[]) = tenv
+        | recursive_type_body (tenv,({name,ty,pos}::tydecs)) =
+          ((case S.look(tenv,name) of
+            SOME(Types.NAME(n, typ)) => (typ := SOME(transTy(tenv, ty, pos)); ())
+            | _ => ErrorMsg.error pos ("type does not exists: " ^ S.name(name)));
+          recursive_type_body (tenv, tydecs))
+
       and types_equal (t1,t2) = (case t1 of
-        T.RECORD(l,u) => if t2=T.NIL then true else false
-        | T.NIL => (case t2 of T.NIL => true | T.RECORD(l,u) => true | _ => false)
+        T.RECORD(l,u) => if t2=T.NIL then true else t1=t2
+        | T.NIL => (case t2 of T.RECORD(l,u) => true | _ => t1=t2)
         | T.BOTTOM => true
         | _ => (case t2 of T.BOTTOM => true | _ => t1=t2))
 
-      and create_type (tenv,name,ty,pos) = (case ty of
+      and transTy (tenv,ty,pos) = (case ty of
           A.NameTy(s,p) => (case S.look(tenv,s) of
-              SOME ty => S.enter(tenv,name,ty)
-            | NONE => (ErrorMsg.error pos ("undefined type: " ^ S.name(s)); tenv))
-        | A.RecordTy(fieldlist) => S.enter(tenv,name,T.RECORD(create_fields fieldlist, ref ()))
-        | A.ArrayTy(s,p) => S.enter(tenv,name,T.ARRAY(create_array (tenv,s,p),ref ())))
+            SOME t => t
+            | NONE => (ErrorMsg.error pos ("undefined type: " ^ S.name(s)); T.BOTTOM))
+        | A.RecordTy(fieldlist) => T.RECORD(create_fields fieldlist, ref ())
+        | A.ArrayTy(s,p) => T.ARRAY(create_array (tenv,s,p),ref ()))
 
       and create_fields [] = []
         | create_fields ({name,escape,typ,pos}::fieldlist) = (case S.look(tenv, typ) of
@@ -117,14 +129,14 @@ struct
           val  {exp=_,ty=ty} = transExp (venv,tenv) init
         in
           ((case typ of
-              SOME (sym,p) => if (types_equal (get_type (tenv,sym,p),ty)) then () else ErrorMsg.error pos ("declared type and expression do not match")
+              SOME (sym,p) => if (types_equal ((actual_ty((get_type (tenv,sym,p)), pos)),ty)) then () else ErrorMsg.error pos ("declared type " ^ (T.name (actual_ty ( (get_type (tenv,sym,p)), pos))) ^ " and expression " ^ (T.name ty) ^" do not match")
             | NONE => ());
           S.enter(venv,name,E.VarEntry{ty=ty}))
         end
 
       and get_type (tenv,sym,pos) = (case S.look(tenv,sym) of
             SOME ty => ty
-          | NONE => (ErrorMsg.error pos ("undefined type: " ^ S.name(sym)); Types.BOTTOM))
+          | NONE => (ErrorMsg.error pos ("undefined type: " ^ S.name(sym)); T.BOTTOM))
 
       and trvar (A.SimpleVar(id,pos)) = check_simple_var (id,pos)
         | trvar (A.FieldVar(v,id,pos)) = check_field_var (v,id,pos)
@@ -162,7 +174,7 @@ struct
         let
           fun check_ty typ = (case typ of
             T.NAME(s, t) => (case !t of
-              NONE => (ErrorMsg.error pos ("undefined type: " ^ S.name(s)); T.BOTTOM)
+              NONE => (ErrorMsg.error pos ("undefined type: " ^ T.name(typ)); T.BOTTOM)
               | SOME t => check_ty t)
             | _ => typ)
         in
