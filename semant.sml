@@ -17,7 +17,6 @@ struct
 
   val depth = ref 0
 
-  (* TODO: function mutual recursion *)
   (* TODO: polymorphic type inference *)
 
   fun transExp (venv, tenv) =
@@ -58,37 +57,7 @@ struct
 
       and transDec (venv,tenv,A.TypeDec(tydecs)) = {venv=venv,tenv=(recursive_type_body ((recursive_type_dec (tenv,tydecs)),tydecs))}
         | transDec (venv,tenv,A.VarDec{name,escape,typ,init,pos}) = {venv=create_var(venv,tenv,name,escape,typ,init,pos),tenv=tenv}
-        | transDec (venv,tenv,A.FunctionDec({name,params,body,pos,result=SOME(rt,pos')}::fundecs)) =
-					let
-            val SOME(result_ty) = S.look(tenv,rt)
-						fun transparam {name,escape,typ,pos} =
-							case S.look(tenv,typ) of
-                SOME t => {name=name,ty=t}
-							  | _  => (ErrorMsg.error pos ("undefined type: " ^ S.name(typ)); {name=name,ty=T.BOTTOM})
-						val params' = map transparam params
-						val venv' = S.enter(venv,name, E.FunEntry{formals=map #ty params', result=result_ty})
-						fun enterparam ({name,ty},venv) = S.enter(venv,name, E.VarEntry{ty=ty})
-						val venv'' = foldl enterparam venv' params'
-            val  {exp=_,ty=body_ty} = transExp(venv'',tenv) body;
-            val _ = if types_equal (body_ty,result_ty) then () else ErrorMsg.error pos ("declared function type and expression do not match")
-					in
-						transDec(venv',tenv, A.FunctionDec(fundecs))
-					end
-        | transDec (venv,tenv,A.FunctionDec({name,params,body,pos,result=NONE}::fundecs)) =
-          let
-            fun transparam {name,escape,typ,pos} =
-              case S.look(tenv,typ) of
-                SOME t => {name=name,ty=t}
-                | _  => (ErrorMsg.error pos ("undefined type: " ^ S.name(typ)); {name=name,ty=T.BOTTOM})
-            val params' = map transparam params
-            fun enterparam ({name,ty},venv) = S.enter(venv,name, E.VarEntry{ty=ty})
-            val venv' = S.enter(venv,name, E.FunEntry{formals=map #ty params', result=T.BOTTOM}) (* IMPROVE: Use bottom type *)
-            val venv'' = foldl enterparam venv' params'
-            val  {exp=_,ty=body_ty} = transExp(venv'',tenv) body;
-          in
-            transDec(venv',tenv, A.FunctionDec(fundecs))
-          end
-        | transDec (venv,tenv,A.FunctionDec[]) = {venv=venv,tenv=tenv}
+        | transDec (venv,tenv,A.FunctionDec(fundecs)) = {venv=(recursive_func_body ((recursive_func_dec (venv,fundecs)),fundecs)),tenv=tenv}
 
       and recursive_type_dec (tenv,[]) = tenv
         | recursive_type_dec (tenv,({name,ty,pos}::tydecs)) = (case S.look(tenv,name) of
@@ -101,6 +70,41 @@ struct
             SOME(Types.NAME(n, typ)) => (typ := SOME(transTy(tenv, ty, pos)); ())
             | _ => ErrorMsg.error pos ("type does not exists: " ^ S.name(name)));
           recursive_type_body (tenv, tydecs))
+
+      and recursive_func_dec (venv, []) = venv
+        | recursive_func_dec (venv, ({name,params,body,pos,result}::fundecs)) =
+          let
+            val result_ty = (case result of
+              SOME (rt, pos') => (case S.look(tenv,rt) of SOME ty => ty | NONE => (ErrorMsg.error pos ("type does not exists: " ^ S.name(rt)); T.BOTTOM))
+              | NONE => T.BOTTOM)
+            fun transparam {name,escape,typ,pos} =
+              case S.look(tenv,typ) of
+                SOME t => {name=name,ty=t}
+                | _  => (ErrorMsg.error pos ("undefined type: " ^ S.name(typ)); {name=name,ty=T.BOTTOM})
+            val params' = map transparam params
+            val venv' = S.enter(venv, name, E.FunEntry{formals=map #ty params', result=result_ty})
+          in
+            recursive_func_dec(venv', fundecs)
+          end
+
+      and recursive_func_body (venv,[]) = venv
+        | recursive_func_body (venv,({name,params,body,pos,result}::fundecs)) =
+          let
+            fun transparam {name,escape,typ,pos} =
+              case S.look(tenv,typ) of
+                SOME t => {name=name,ty=t}
+                | _  => (ErrorMsg.error pos ("undefined type: " ^ S.name(typ)); {name=name,ty=T.BOTTOM})
+            val params' = map transparam params
+            fun enterparam ({name,ty},venv) = S.enter(venv,name, E.VarEntry{ty=ty})
+            val venv'' = foldl enterparam venv params'
+            val  {exp=_,ty=body_ty} = transExp(venv'',tenv) body
+            val rt = case S.look(venv,name) of
+              SOME (E.FunEntry{formals=f,result=return_ty}) => return_ty
+              | _ => (ErrorMsg.error pos ("function does not exists: " ^ S.name(name)); T.BOTTOM)
+            val _ = if types_equal (body_ty,rt) then () else ErrorMsg.error pos ("declared function type and expression do not match")
+          in
+            recursive_func_body (venv, fundecs)
+          end
 
       and types_equal (t1,t2) = (case t1 of
         T.RECORD(l,u) => if t2=T.NIL then true else t1=t2
