@@ -50,12 +50,17 @@ struct
         | transDecs (venv,tenv,dec::decs) =
           let
             val {venv=new_venv,tenv=new_tenv} = transDec (venv,tenv,dec)
-            (* TODO: circular linked types - maybe in actual_type function keep already visited and throw error if already visited *)
           in
             transDecs (new_venv,new_tenv,decs)
           end
 
-      and transDec (venv,tenv,A.TypeDec(tydecs)) = {venv=venv,tenv=(recursive_type_body ((recursive_type_dec (tenv,tydecs)),tydecs))}
+      and transDec (venv,tenv,A.TypeDec(tydecs)) =
+          let
+            val tenv' = (recursive_type_body ((recursive_type_dec (tenv,tydecs)),tydecs))
+            val _ = check_cycles (tenv', tydecs)
+          in
+            {venv=venv,tenv=tenv'}
+          end
         | transDec (venv,tenv,A.VarDec{name,escape,typ,init,pos}) = {venv=create_var(venv,tenv,name,escape,typ,init,pos),tenv=tenv}
         | transDec (venv,tenv,A.FunctionDec(fundecs)) = {venv=(recursive_func_body ((recursive_func_dec (venv,fundecs)),fundecs)),tenv=tenv}
 
@@ -133,13 +138,13 @@ struct
           val  {exp=_,ty=ty} = transExp (venv,tenv) init
         in
           ((case typ of
-              SOME (sym,p) => if (types_equal ((actual_ty((get_type (tenv,sym,p)), pos)),ty)) then () else ErrorMsg.error pos ("declared type " ^ (T.name (actual_ty ( (get_type (tenv,sym,p)), pos))) ^ " and expression " ^ (T.name ty) ^" do not match")
+              SOME (sym,p) => if types_equal ((get_type (tenv,sym,p)),ty) then () else ErrorMsg.error pos ("declared type " ^ (T.name (get_type (tenv,sym,p))) ^ " and expression " ^ (T.name ty) ^" do not match")
             | NONE => ());
           S.enter(venv,name,E.VarEntry{ty=ty}))
         end
 
       and get_type (tenv,sym,pos) = (case S.look(tenv,sym) of
-            SOME ty => ty
+            SOME ty => actual_ty (ty,pos)
           | NONE => (ErrorMsg.error pos ("undefined type: " ^ S.name(sym)); T.BOTTOM))
 
       and trvar (A.SimpleVar(id,pos)) = check_simple_var (id,pos)
@@ -299,6 +304,19 @@ struct
           (check_int (trexp exp1,pos);
            {exp=(), ty=return_ty})
         end
+
+      and check_cycles (tenv, []) = ()
+        | check_cycles (tenv, ({name,ty,pos}::tydecs)) =
+          let
+            (* actual_ty if you ever get back to yourself cycle  *)
+            val SOME(T.NAME(n,typ)) = S.look(tenv,name)
+            fun cycle typ = (case typ of
+              T.NAME(s, topt) => (case !topt of SOME t => (if S.name(s) = S.name(name) then ErrorMsg.error pos ("type cycle: " ^ S.name(s)) else (cycle t)) | NONE => ())
+              | _ => ())
+            val _ = (case !typ of SOME t => cycle t | NONE => ())
+          in
+            check_cycles (tenv, tydecs)
+          end
 
       and check_int ({exp=_,ty=T.INT},_) = ()
         | check_int ({exp=_,ty=T.BOTTOM},_) = ()
