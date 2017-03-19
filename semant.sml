@@ -67,7 +67,7 @@ struct
       and recursive_type_dec (tenv,[]) = tenv
         | recursive_type_dec (tenv,({name,ty,pos}::tydecs)) = (case S.look(tenv,name) of
             SOME t => (ErrorMsg.error pos ("type already exists: " ^ S.name(name)); recursive_type_dec(tenv,tydecs))
-            | NONE => S.enter(recursive_type_dec(tenv,tydecs),name,T.NAME(name, ref NONE)))
+            | NONE => recursive_type_dec(S.enter(tenv,name,T.NAME(name, ref NONE)),tydecs))
 
       and recursive_type_body (tenv,[]) = tenv
         | recursive_type_body (tenv,({name,ty,pos}::tydecs)) =
@@ -87,7 +87,9 @@ struct
                 SOME t => {name=name,ty=t}
                 | _  => (ErrorMsg.error pos ("undefined type: " ^ S.name(typ)); {name=name,ty=T.BOTTOM})
             val params' = map transparam params
-            val venv' = S.enter(venv, name, E.FunEntry{formals=map #ty params', result=result_ty})
+            val venv' = (case S.look(venv, name) of
+              SOME v =>(ErrorMsg.error pos ("function already exists: " ^ S.name(name)); venv)
+              | NONE => S.enter(venv, name, E.FunEntry{formals=map #ty params', result=result_ty}))
           in
             recursive_func_dec(venv', fundecs)
           end
@@ -121,13 +123,13 @@ struct
           A.NameTy(s,p) => (case S.look(tenv,s) of
             SOME t => t
             | NONE => (ErrorMsg.error pos ("undefined type: " ^ S.name(s)); T.BOTTOM))
-        | A.RecordTy(fieldlist) => T.RECORD(create_fields fieldlist, ref ())
+        | A.RecordTy(fieldlist) => T.RECORD(create_fields (tenv, fieldlist), ref ())
         | A.ArrayTy(s,p) => T.ARRAY(create_array (tenv,s,p),ref ()))
 
-      and create_fields [] = []
-        | create_fields ({name,escape,typ,pos}::fieldlist) = (case S.look(tenv, typ) of
-            SOME ty => (name,ty)::(create_fields fieldlist)
-          | _ => (ErrorMsg.error pos ("undefined type: " ^ S.name(typ)); (create_fields fieldlist)))
+      and create_fields (tenv,[]) = []
+        | create_fields (tenv, ({name,escape,typ,pos}::fieldlist)) = (case S.look(tenv, typ) of
+            SOME ty => (name,ty)::(create_fields (tenv,fieldlist))
+          | _ => (ErrorMsg.error pos ("undefined type: " ^ S.name(typ)); (create_fields (tenv,fieldlist))))
 
       and create_array (tenv,typ,pos) = (case S.look(tenv,typ) of
           SOME ty => actual_ty (ty,pos)
@@ -144,7 +146,7 @@ struct
         end
 
       and get_type (tenv,sym,pos) = (case S.look(tenv,sym) of
-            SOME ty => actual_ty (ty,pos)
+            SOME ty => ty (* TODO: actual_ty ty,pos ?*)
           | NONE => (ErrorMsg.error pos ("undefined type: " ^ S.name(sym)); T.BOTTOM))
 
       and trvar (A.SimpleVar(id,pos)) = check_simple_var (id,pos)
@@ -227,7 +229,7 @@ struct
             let
               val {exp=_,ty=typ} = trexp exp
             in
-              if types_equal(ty,typ) then true else (ErrorMsg.error pos ("record field type does not match expression"); false) (* IMPROVE: error message *)
+              if types_equal(actual_ty (ty,pos),actual_ty (typ,pos)) then true else (ErrorMsg.error pos ("record field type does not match expression"); false) (* IMPROVE: error message *)
             end
         in
           if compare_field_types (fields, types) then {exp=(), ty=return_ty} else {exp=(), ty=T.BOTTOM}
@@ -308,12 +310,13 @@ struct
       and check_cycles (tenv, []) = ()
         | check_cycles (tenv, ({name,ty,pos}::tydecs)) =
           let
-            (* actual_ty if you ever get back to yourself cycle  *)
-            val SOME(T.NAME(n,typ)) = S.look(tenv,name)
-            fun cycle typ = (case typ of
-              T.NAME(s, topt) => (case !topt of SOME t => (if S.name(s) = S.name(name) then ErrorMsg.error pos ("type cycle: " ^ S.name(s)) else (cycle t)) | NONE => ())
+            val SOME(t) = S.look(tenv,name)
+            fun typ_visited (t, []) = false
+              | typ_visited (t, ty::tylist) = if S.name(t) = S.name(ty) then true else typ_visited (t, tylist)
+            fun cycle (typ, list) = (case typ of
+              T.NAME(s, topt) => if typ_visited (s, list) then ErrorMsg.error pos ("type cycle: " ^ S.name(s)) else (case !topt of SOME t => cycle (t,s::list)| NONE => ()) (* if no add to list and go deeper*)
               | _ => ())
-            val _ = (case !typ of SOME t => cycle t | NONE => ())
+            val _ = cycle (t,[])
           in
             check_cycles (tenv, tydecs)
           end
@@ -331,7 +334,7 @@ struct
           val {exp=_,ty=ty1} = trexp exp1
           val {exp=_,ty=ty2} = trexp exp2
         in
-          if types_equal (ty1,ty2) then {exp=(),ty=ty1} else {exp=(),ty=T.BOTTOM} (* IMPROVE: what if the type ty1 is a subtype (want supertype)*)
+          if types_equal (actual_ty (ty1,pos),actual_ty (ty2,pos)) then {exp=(),ty=ty1} else (ErrorMsg.error pos ("types do not match"); {exp=(),ty=T.BOTTOM}) (* IMPROVE: what if the type ty1 is a subtype (want supertype)*)
         end
     in
       trexp
