@@ -150,7 +150,7 @@ struct
         end
 
       and get_type (tenv,sym,pos) = (case S.look(tenv,sym) of
-            SOME ty => ty (* TODO: actual_ty ty,pos ?*)
+            SOME ty => ty
           | NONE => (ErrorMsg.error pos ("undefined type: " ^ S.name(sym)); T.BOTTOM))
 
       and trvar (A.SimpleVar(id,pos)) = check_simple_var (id,pos)
