@@ -51,12 +51,13 @@ val S = Symbol.symbol
 %value STRING ("")
 
 %nonassoc ID
-%nonassoc ASSIGN EQ DO THEN OF LBRACK
-%right FUNCTION TYPE
-%right ELSE
+%nonassoc OF ASSIGN DO
+%nonassoc THEN
+%nonassoc ELSE
+%nonassoc LBRACK
 %left OR
 %left AND
-%nonassoc EQUALS NEQ GT LT GE LE
+%nonassoc EQ NEQ LT LE GT GE
 %left PLUS MINUS
 %left TIMES DIVIDE
 %left UMINUS
@@ -100,7 +101,7 @@ operation : exp PLUS exp (A.OpExp({left=exp1,oper=A.PlusOp,right=exp2,pos=exp1le
           | exp LE exp (A.OpExp({left=exp1,oper=A.LeOp,right=exp2,pos=exp1left}))
           | exp LT exp (A.OpExp({left=exp1,oper=A.LtOp,right=exp2,pos=exp1left}))
           | exp NEQ exp (A.OpExp({left=exp1,oper=A.NeqOp,right=exp2,pos=exp1left}))
-          | exp EQ exp %prec EQUALS (A.OpExp({left=exp1,oper=A.EqOp,right=exp2,pos=exp1left}))
+          | exp EQ exp (A.OpExp({left=exp1,oper=A.EqOp,right=exp2,pos=exp1left}))
           | exp OR exp (A.IfExp({test=exp1,then'=A.IntExp(1),else'=SOME(exp2),pos=exp1left}))
           | exp AND exp (A.IfExp({test=exp1,then'=exp2,else'=SOME(A.IntExp(0)),pos=exp1left}))
 

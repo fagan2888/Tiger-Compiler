@@ -62,7 +62,7 @@ struct
             {venv=venv,tenv=tenv'}
           end
         | transDec (venv,tenv,A.VarDec{name,escape,typ,init,pos}) = {venv=create_var(venv,tenv,name,escape,typ,init,pos),tenv=tenv}
-        | transDec (venv,tenv,A.FunctionDec(fundecs)) = {venv=(recursive_func_body ((recursive_func_dec (venv,fundecs)),fundecs)),tenv=tenv}
+        | transDec (venv,tenv,A.FunctionDec(fundecs)) = {venv=(recursive_func_body ((recursive_func_dec (venv,tenv,fundecs)),tenv,fundecs)),tenv=tenv}
 
       and recursive_type_dec (tenv,[]) = tenv
         | recursive_type_dec (tenv,({name,ty,pos}::tydecs)) = S.enter(recursive_type_dec(tenv,tydecs),name,T.NAME(name, ref NONE))
@@ -74,8 +74,8 @@ struct
             | _ => ErrorMsg.error pos ("type does not exists: " ^ S.name(name)));
           recursive_type_body (tenv, tydecs))
 
-      and recursive_func_dec (venv, []) = venv
-        | recursive_func_dec (venv, ({name,params,body,pos,result}::fundecs)) =
+      and recursive_func_dec (venv, tenv,[]) = venv
+        | recursive_func_dec (venv, tenv, ({name,params,body,pos,result}::fundecs)) =
           let
             val result_ty = (case result of
               SOME (rt, pos') => (case S.look(tenv,rt) of SOME ty => ty | NONE => (ErrorMsg.error pos ("type does not exists: " ^ S.name(rt)); T.BOTTOM))
@@ -87,11 +87,11 @@ struct
             val params' = map transparam params
             val venv' = S.enter(venv, name, E.FunEntry{formals=map #ty params', result=result_ty})
           in
-            recursive_func_dec(venv', fundecs)
+            recursive_func_dec(venv', tenv, fundecs)
           end
 
-      and recursive_func_body (venv,[]) = venv
-        | recursive_func_body (venv,({name,params,body,pos,result}::fundecs)) =
+      and recursive_func_body (venv,tenv,[]) = venv
+        | recursive_func_body (venv,tenv,({name,params,body,pos,result}::fundecs)) =
           let
             fun transparam {name,escape,typ,pos} =
               case S.look(tenv,typ) of
@@ -104,9 +104,9 @@ struct
             val rt = case S.look(venv,name) of
               SOME (E.FunEntry{formals=f,result=return_ty}) => return_ty
               | _ => (ErrorMsg.error pos ("function does not exists: " ^ S.name(name)); T.BOTTOM)
-            val _ = if types_equal (body_ty,rt) then () else ErrorMsg.error pos ("declared function type and expression do not match")
+            val _ = if types_equal (actual_ty (body_ty,pos),actual_ty (rt,pos)) then () else ErrorMsg.error pos ("declared function type and expression do not match")
           in
-            recursive_func_body (venv, fundecs)
+            recursive_func_body (venv, tenv,fundecs)
           end
 
       and types_equal (t1,t2) = (case t1 of
@@ -198,7 +198,7 @@ struct
             let
               val {exp=_,ty=typ} = trexp exp
             in
-              if types_equal(typ,t) then check_arg_types (exps,tys) else (ErrorMsg.error pos ("argument type does not match declared type"); false)
+              if types_equal(actual_ty (typ,pos),actual_ty (t,pos)) then check_arg_types (exps,tys) else (ErrorMsg.error pos ("argument type does not match declared type"); false)
             end
           | check_arg_types ([],[]) = true
           | check_arg_types (_,_) = false
@@ -240,7 +240,7 @@ struct
           val {exp=_,ty=tyl} = trvar var
           val {exp=_,ty=tyr} = trexp exp
         in
-          if types_equal (tyl,tyr)
+          if types_equal (actual_ty (tyl,pos),actual_ty (tyr,pos))
           then {exp=(), ty=T.UNIT}
           else (ErrorMsg.error pos ("variable and expresion of different type"); {exp=(), ty=T.BOTTOM}) (* IMPROVE: error message *)
         end
@@ -253,7 +253,7 @@ struct
                 val {exp=_,ty=ty2} = trexp exp2
                 val {exp=_,ty=ty3} = trexp exp
               in
-                if types_equal(ty2,ty3) then {exp=(), ty=ty2} else (ErrorMsg.error pos ("types of then - else differ");{exp=(), ty=T.BOTTOM}) (* IMPROVE: what if the type ty2 is a subtype (want supertype)*)
+                if types_equal(actual_ty (ty2,pos),actual_ty (ty3,pos)) then {exp=(), ty=ty2} else (ErrorMsg.error pos ("types of then - else differ");{exp=(), ty=T.BOTTOM}) (* IMPROVE: what if the type ty2 is a subtype (want supertype)*)
               end
           | NONE => (check_unit (trexp exp2,pos); {exp=(), ty=T.UNIT})))
 
@@ -318,7 +318,7 @@ struct
 
       and check_int ({exp=_,ty=T.INT},_) = ()
         | check_int ({exp=_,ty=T.BOTTOM},_) = ()
-      	| check_int ({exp=_,ty=_},pos) = ErrorMsg.error pos "integer argument expected"
+      	| check_int ({exp=_,ty=t},pos) = ErrorMsg.error pos ("integer argument expected" ^T.name(t))
 
       and check_unit ({exp=_,ty=T.UNIT},_) = ()
         | check_unit ({exp=_,ty=T.BOTTOM},_) = ()
@@ -329,7 +329,7 @@ struct
           val {exp=_,ty=ty1} = trexp exp1
           val {exp=_,ty=ty2} = trexp exp2
         in
-          if types_equal (actual_ty (ty1,pos),actual_ty (ty2,pos)) then {exp=(),ty=ty1} else (ErrorMsg.error pos ("types do not match"); {exp=(),ty=T.BOTTOM}) (* IMPROVE: what if the type ty1 is a subtype (want supertype)*)
+          if types_equal (actual_ty (ty1,pos),actual_ty (ty2,pos)) then {exp=(),ty=T.INT} else (ErrorMsg.error pos ("types do not match"); {exp=(),ty=T.BOTTOM}) (* IMPROVE: what if the type ty1 is a subtype (want supertype)*)
         end
     in
       trexp
