@@ -56,16 +56,19 @@ struct
 
       and transDec (venv,tenv,A.TypeDec(tydecs)) =
           let
-            val tenv' = (recursive_type_body ((recursive_type_dec (tenv,tydecs)),tydecs))
+            val tenv' = (recursive_type_body ((recursive_type_dec (tenv,[],tydecs)),tydecs))
             val _ = check_cycles (tenv', tydecs)
           in
             {venv=venv,tenv=tenv'}
           end
         | transDec (venv,tenv,A.VarDec{name,escape,typ,init,pos}) = {venv=create_var(venv,tenv,name,escape,typ,init,pos),tenv=tenv}
-        | transDec (venv,tenv,A.FunctionDec(fundecs)) = {venv=(recursive_func_body ((recursive_func_dec (venv,tenv,fundecs)),tenv,fundecs)),tenv=tenv}
+        | transDec (venv,tenv,A.FunctionDec(fundecs)) = {venv=(recursive_func_body ((recursive_func_dec (venv,tenv,[],fundecs)),tenv,fundecs)),tenv=tenv}
 
-      and recursive_type_dec (tenv,[]) = tenv
-        | recursive_type_dec (tenv,({name,ty,pos}::tydecs)) = S.enter(recursive_type_dec(tenv,tydecs),name,T.NAME(name, ref NONE))
+      and recursive_type_dec (tenv,list,[]) = tenv
+        | recursive_type_dec (tenv,list,({name,ty,pos}::tydecs)) = (type_declared (name,list,pos); S.enter(recursive_type_dec(tenv,name::list,tydecs),name,T.NAME(name, ref NONE)))
+
+      and type_declared (n,[],_) = ()
+        | type_declared (n, t::list,pos) = if S.name(n)=S.name(t) then ErrorMsg.error pos ("recursive types with same name: " ^ S.name(n)) else type_declared (n,list,pos)
 
       and recursive_type_body (tenv,[]) = tenv
         | recursive_type_body (tenv,({name,ty,pos}::tydecs)) =
@@ -74,8 +77,8 @@ struct
             | _ => ErrorMsg.error pos ("type does not exists: " ^ S.name(name)));
           recursive_type_body (tenv, tydecs))
 
-      and recursive_func_dec (venv, tenv,[]) = venv
-        | recursive_func_dec (venv, tenv, ({name,params,body,pos,result}::fundecs)) =
+      and recursive_func_dec (venv, tenv, list, []) = venv
+        | recursive_func_dec (venv, tenv, list, ({name,params,body,pos,result}::fundecs)) =
           let
             val result_ty = (case result of
               SOME (rt, pos') => (case S.look(tenv,rt) of SOME ty => ty | NONE => (ErrorMsg.error pos ("type does not exists: " ^ S.name(rt)); T.BOTTOM))
@@ -86,9 +89,14 @@ struct
                 | _  => (ErrorMsg.error pos ("undefined type: " ^ S.name(typ)); {name=name,ty=T.BOTTOM})
             val params' = map transparam params
             val venv' = S.enter(venv, name, E.FunEntry{formals=map #ty params', result=result_ty})
+            val _ = func_declared (name,list,pos)
           in
-            recursive_func_dec(venv', tenv, fundecs)
+            recursive_func_dec(venv', tenv, name::list, fundecs)
           end
+
+      and func_declared (n,[],_) = ()
+        | func_declared (n, t::list,pos) = if S.name(n)=S.name(t) then ErrorMsg.error pos ("recursive functions with same name: " ^ S.name(n)) else func_declared (n,list,pos)
+
 
       and recursive_func_body (venv,tenv,[]) = venv
         | recursive_func_body (venv,tenv,({name,params,body,pos,result}::fundecs)) =
@@ -137,7 +145,7 @@ struct
         in
           ((case typ of
               SOME (sym,p) => if types_equal (actual_ty ((get_type (tenv,sym,p)),p),actual_ty (ty,pos)) then () else ErrorMsg.error pos ("declared type " ^ (T.name (get_type (tenv,sym,p))) ^ " and expression " ^ (T.name ty) ^" do not match")
-            | NONE => ());
+            | NONE => (if ty=T.NIL then ErrorMsg.error pos ("initializing nil expressions not constrained by record type") else () ));
           S.enter(venv,name,E.VarEntry{ty=ty}))
         end
 
