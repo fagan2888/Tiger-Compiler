@@ -65,9 +65,7 @@ struct
         | transDec (venv,tenv,A.FunctionDec(fundecs)) = {venv=(recursive_func_body ((recursive_func_dec (venv,fundecs)),fundecs)),tenv=tenv}
 
       and recursive_type_dec (tenv,[]) = tenv
-        | recursive_type_dec (tenv,({name,ty,pos}::tydecs)) = (case S.look(tenv,name) of
-            SOME t => (ErrorMsg.error pos ("type already exists: " ^ S.name(name)); recursive_type_dec(tenv,tydecs))
-            | NONE => recursive_type_dec(S.enter(tenv,name,T.NAME(name, ref NONE)),tydecs))
+        | recursive_type_dec (tenv,({name,ty,pos}::tydecs)) = S.enter(recursive_type_dec(tenv,tydecs),name,T.NAME(name, ref NONE))
 
       and recursive_type_body (tenv,[]) = tenv
         | recursive_type_body (tenv,({name,ty,pos}::tydecs)) =
@@ -87,9 +85,7 @@ struct
                 SOME t => {name=name,ty=t}
                 | _  => (ErrorMsg.error pos ("undefined type: " ^ S.name(typ)); {name=name,ty=T.BOTTOM})
             val params' = map transparam params
-            val venv' = (case S.look(venv, name) of
-              SOME v =>(ErrorMsg.error pos ("function already exists: " ^ S.name(name)); venv)
-              | NONE => S.enter(venv, name, E.FunEntry{formals=map #ty params', result=result_ty}))
+            val venv' = S.enter(venv, name, E.FunEntry{formals=map #ty params', result=result_ty})
           in
             recursive_func_dec(venv', fundecs)
           end
@@ -140,7 +136,7 @@ struct
           val  {exp=_,ty=ty} = transExp (venv,tenv) init
         in
           ((case typ of
-              SOME (sym,p) => if types_equal ((get_type (tenv,sym,p)),ty) then () else ErrorMsg.error pos ("declared type " ^ (T.name (get_type (tenv,sym,p))) ^ " and expression " ^ (T.name ty) ^" do not match")
+              SOME (sym,p) => if types_equal (actual_ty ((get_type (tenv,sym,p)),p),actual_ty (ty,pos)) then () else ErrorMsg.error pos ("declared type " ^ (T.name (get_type (tenv,sym,p))) ^ " and expression " ^ (T.name ty) ^" do not match")
             | NONE => ());
           S.enter(venv,name,E.VarEntry{ty=ty}))
         end
@@ -286,7 +282,6 @@ struct
           val _ = depth := 0
           val {venv=new_venv,tenv=new_tenv} = transDecs (venv,tenv,decs)
           val _ = depth := !curr_depth
-
         in
           transExp (new_venv,new_tenv) expseq
         end
@@ -301,7 +296,7 @@ struct
       and check_array_init (t,ty,exp1,exp2,pos) =
         let
           val {exp=_,ty=typ} = trexp exp2
-          val return_ty = if types_equal (typ,ty) then t else (ErrorMsg.error pos ("array initialization does not match type"); T.BOTTOM)
+          val return_ty = if types_equal (actual_ty (typ,pos),actual_ty (ty,pos)) then t else (ErrorMsg.error pos ("array initialization does not match type"); T.BOTTOM)
         in
           (check_int (trexp exp1,pos);
            {exp=(), ty=return_ty})
