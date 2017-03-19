@@ -326,7 +326,7 @@ struct
 
       and check_int ({exp=_,ty=T.INT},_) = ()
         | check_int ({exp=_,ty=T.BOTTOM},_) = ()
-      	| check_int ({exp=_,ty=t},pos) = ErrorMsg.error pos ("integer argument expected" ^T.name(t))
+      	| check_int ({exp=_,ty=t},pos) = ErrorMsg.error pos ("integer argument expected")
 
       and check_unit ({exp=_,ty=T.UNIT},_) = ()
         | check_unit ({exp=_,ty=T.BOTTOM},_) = ()
