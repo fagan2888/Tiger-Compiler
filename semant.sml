@@ -2,6 +2,7 @@ structure A = Absyn
 structure S = Symbol
 structure T = Types
 structure E = Env
+structure R = Translate
 
 signature SEMANT =
 sig
@@ -10,8 +11,7 @@ end
 
 structure Semant : SEMANT =
 struct
-  structure Translate = struct type exp = unit end
-  type expty = {exp: Translate.exp, ty: T.ty}
+  type expty = {exp: R.exp, ty: T.ty}
   type venv = E.enventry S.table
   type tenv = T.ty S.table
 
