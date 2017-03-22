@@ -13,7 +13,7 @@ sig
   val procEntryExit: {level: level, body: exp} -> unit
   val getResult: unit -> Frame.frag list
 
-  val simpleVar: access * level -> exp (* TODO *)
+  val simpleVar: access * level -> exp
   val subscriptVar : exp * exp -> exp (* TODO *)
   val fieldVar : exp * exp -> exp (* TODO *)
 
@@ -100,11 +100,19 @@ struct
 		| unNx (Cx c) = unNx (Ex (unEx (c)))
     | unNx (Nx n) = n
 
+  fun simpleVar ((lvl1, frm), lvl2) =
+    let
+      fun find_link (outermost,_) = T.TEMP(Frame.FP) (* TODO: error, variable cannot be on top level *)
+        | find_link (_,outermost) = T.TEMP(Frame.FP) (* TODO: error, variable cannot be on top level *)
+        | find_link (lvl1 as LEVEL({frame=f1, parent=p1, unique=u1}),LEVEL({frame=f2, parent=p2, unique=u2})) = if u1=u2 then T.TEMP(Frame.FP) else T.MEM(find_link(lvl1, p2))
+    in
+      Ex (Frame.exp frm find_link(lvl1, lvl2))
+    end
+
   fun nilExp () = Ex (T.CONST (0))
   fun intExp (num) = Ex (T.CONST (num))
   fun stringExp (str) =
     let
-      (* TODO: Check if already exists in !frags *)
       val label = Temp.newlabel()
       val _ = (frags := Frame.STRING(label, str)::!frags)
     in
@@ -136,14 +144,7 @@ struct
 
   fun seqExp [] = Ex (T.CONST 0) (* TODO: can't do this, empty expression seq*)
     | seqExp [exp] = exp
-    | seqExp (exps) =
-      let
-        val last = unEx List.last(exps)
-        fun create_seq (exp, list) = (unNx exp)::list
-        val exp_seq = foldl create_seq [] List.take(exps,List.length(exps)-1)
-      in
-        Ex(T.ESEQ(T.SEQ(exp_seq), last))
-      end
+    | seqExp (exps) = Ex(T.ESEQ(T.SEQ(map unNx List.take(exps,List.length(exps)-1)), unEx List.last(exps)))
 
   fun assignExp (exp1,exp2) = Nx (T.MOVE (unEx exp1, unEx exp2))
 

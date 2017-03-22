@@ -23,11 +23,11 @@ fun newFrame {name:Temp.label,formals:bool list} =
 							InFrame((!locAlloc)*(~4))::transFormals(formals)
 					end
 			| transFormals [] = []
-															
+
 	in
 			{name=name,formals=transFormals(formals),locals=locAlloc}:frame
 	end
-			
+
 
 fun name (a:frame) = #name a
 
@@ -44,9 +44,13 @@ val FP = Temp.newtemp()
 val RV = Temp.newtemp()
 val wordsize = 32 (* bits *)
 
+fun exp acc exp = case acc of
+	InFrame(num) => Tree.MEM(Tree.BINOP(Tree.PLUS, exp, Tree.CONST(num)))
+	| InReg(tmp) => Tree.TEMP(tmp)
+
 fun externalCall (s,args) =
 	Tree.CALL(Tree.NAME(Temp.namedlabel(s)), args)
-				
+
 fun procEntryExit1 (frame,body) = body
-																	
+
 end
