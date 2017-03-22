@@ -21,12 +21,12 @@ sig
   val intExp: int -> exp
   val stringExp: string -> exp
   val callExp: Temp.label * exp list -> exp
-  val opExp: Absyn.oper * exp * exp -> exp (* TODO: string comparisons *)
-  val recordExp: exp list -> exp (* TODO: Matt *)
-  val seqExp: exp list -> exp (* TODO: Matt *)
-  val assignExp: exp * exp -> exp (* TODO: Matt *)
-  val ifThenExp: exp * exp -> exp (* TODO: Matt *)
-  val ifThenElse: exp * exp * exp -> exp (* TODO: Matt *)
+  val opExp: Absyn.oper * exp * exp -> exp
+  val recordExp: exp list -> exp
+  val seqExp: exp list -> exp
+  val assignExp: exp * exp -> exp
+  val ifThenExp: exp * exp -> exp
+  val ifThenElse: exp * exp * exp -> exp
   val whileExp: Temp.label * exp * exp -> exp (* TODO: Gabe *)
 	val forExp: Temp.label * exp * exp * exp * exp -> exp (* TODO:Gabe *)
 	val breakExp: Temp.label -> exp (* TODO:Gabe *)
@@ -70,9 +70,8 @@ struct
       val pbody = T.MOVE(T.TEMP(F.RV), unEx (my_body))
       val rbody = Frame.procEntryExit1(frame, pbody)
       val frag = Frame.PROC({body=rbody,frame=frame})
-      val _ = (frags := frag::(!frags))
     in
-      ()
+      frags := frag::(!frags)
     end
 
   fun getResult () = !frags
@@ -125,4 +124,49 @@ struct
     | opExp (A.GtOp, exp1, exp2) = Cx(fn(t,f) => T.CJUMP(T.GT, unEx(exp1), unEx(exp2), t, f))
     | opExp (A.GeOp, exp1, exp2) = Cx(fn(t,f) => T.CJUMP(T.GE, unEx(exp1), unEx(exp2), t, f))
 
+  fun recordExp (exps) =
+    let
+      val r = Temp.newtemp()
+      val init = [T.MOVE(T.TEMP(r),T.CALL(T.NAME(Temp.newlabel()),[T.CONST(List.length(exps)*Frame.wordSize)]))]
+      fun create_seq (exp, list) = T.MOVE(T.MEM(T.BINOP(T.PLUS,T.TEMP(r),T.CONST((List.length(list)-1)*F.wordSize))),unEx(ex))::list
+      val rec_seq = foldl create_seq init exps
+    in
+      Ex(T.ESEQ(T.SEQ(rec_seq),T.TEMP(r)))
+    end
+
+  fun seqExp [] = Ex (T.CONST 0) (* TODO: can't do this, empty expression seq*)
+    | seqExp [exp] = exp
+    | seqExp (exps) =
+      let
+        val last = unEx List.last(exps)
+        fun create_seq (exp, list) = (unNx exp)::list
+        val exp_seq = foldl create_seq [] List.take(exps,List.length(exps)-1)
+      in
+        Ex(T.ESEQ(T.SEQ(exp_seq), last))
+      end
+
+  fun assignExp (exp1,exp2) = Nx (T.MOVE (unEx exp1, unEx exp2))
+
+  fun ifThenExp (exp1,exp2) =
+    let
+      val r = Temp.newtemp()
+      val t = Temp.newlabel() and f = Temp.newlabel()
+    in
+      case exp2 of
+        Cx c => Cx(fn(tt,ff) => (T.SEQ[(unCx(exp1)(t,f)),T.LABEL(t),c(tt,ff),T.LABEL(f)]))
+        | Nx n => Nx(T.SEQ[(unCx(exp1)(t,f)),T.LABEL(t),n,T.LABEL(f)])
+        | Ex e => Ex(T.ESEQ(T.SEQ[(unCx(exp1)(t,f)),T.LABEL(t),T.MOVE(T.TEMP(r),e),T.LABEL(f)], T.TEMP(r)))
+    end
+
+  fun ifThenElseExp (exp1,exp2,exp3) =
+    let
+      val r = Temp.newtemp()
+      val t = Temp.newlabel() and f = Temp.newlabel() and j = Temp.newlabel()
+    in
+      case (exp2,exp3) of
+        (Cx c2, Cx c3) => Cx(fn(tt,ff) => (T.SEQ[(unCx exp1)(t, f),T.LABEL t,c2 (tt, ff),T.LABEL f,c3 (tt, ff)]))
+        | (Nx n2, Nx n3) => Nx(T.SEQ[(unCx exp1)(t,f),T.LABEL t,n2,T.JUMP(T.NAME j, [j]),T.LABEL f,n3,T.LABEL j])
+        | (Ex e2, Ex e3) => Ex(T.ESEQ(T.SEQ[(unCx exp1)(t,f),T.LABEL t,T.MOVE(T.TEMP r,e2),T.JUMP(T.NAME j,[j]),T.LABEL f,T.MOVE(T.TEMP r,e3),T.LABEL j], T.TEMP(r)))
+        | (_,_) => Ex (T.CONST (0)) (* TODO: can't do this, then and else differ *)
+    end
 end
