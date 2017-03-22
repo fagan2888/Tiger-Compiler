@@ -19,23 +19,23 @@ struct
 
   (* TODO: polymorphic type inference *)
 
-  fun transExp (venv, tenv) =
+  fun transExp (venv, tenv, break, level) =
     let
       fun trexp (A.VarExp(var)) = trvar var
-        | trexp (A.NilExp) = {exp=(), ty=T.NIL}
-        | trexp (A.IntExp(int)) = {exp=(), ty=T.INT}
-				| trexp (A.StringExp(string,pos)) = {exp=(), ty=T.STRING}
+        | trexp (A.NilExp) = {exp=R.nilExp(), ty=T.NIL}
+        | trexp (A.IntExp(int)) = {exp=R.intExp(int), ty=T.INT}
+				| trexp (A.StringExp(string,pos)) = {exp=R.stringExp(string), ty=T.STRING}
         | trexp (A.CallExp{func,args,pos}) = check_func (func,args,pos)
-        | trexp (A.OpExp{left,oper=A.PlusOp,right,pos}) = (check_int(trexp left, pos); check_int(trexp right, pos); {exp = (), ty=T.INT})
-				| trexp (A.OpExp{left,oper=A.MinusOp,right,pos}) = (check_int(trexp left, pos); check_int(trexp right, pos); {exp = (), ty=T.INT})
-				| trexp (A.OpExp{left,oper=A.TimesOp,right,pos}) = (check_int(trexp left, pos); check_int(trexp right, pos); {exp = (), ty=T.INT})
-				| trexp (A.OpExp{left,oper=A.DivideOp,right,pos}) = (check_int(trexp left, pos); check_int(trexp right, pos); {exp = (), ty=T.INT})
-				| trexp (A.OpExp{left,oper=A.EqOp,right,pos}) = check_comparision (left, right, pos)
-				| trexp (A.OpExp{left,oper=A.NeqOp,right,pos}) = check_comparision (left, right, pos)
-				| trexp (A.OpExp{left,oper=A.LtOp,right,pos}) = (check_int(trexp left, pos); check_int(trexp right, pos); {exp = (), ty=T.INT})
-				| trexp (A.OpExp{left,oper=A.GtOp,right,pos}) = (check_int(trexp left, pos); check_int(trexp right, pos); {exp = (), ty=T.INT})
-				| trexp (A.OpExp{left,oper=A.LeOp,right,pos}) = (check_int(trexp left, pos); check_int(trexp right, pos); {exp = (), ty=T.INT})
-				| trexp (A.OpExp{left,oper=A.GeOp,right,pos}) = (check_int(trexp left, pos); check_int(trexp right, pos); {exp = (), ty=T.INT})
+        | trexp (A.OpExp{left,oper=A.PlusOp,right,pos}) = (check_int(trexp left, pos); check_int(trexp right, pos); {exp=R.opExp(oper,left,right), ty=T.INT})
+				| trexp (A.OpExp{left,oper=A.MinusOp,right,pos}) = (check_int(trexp left, pos); check_int(trexp right, pos); {exp=R.opExp(oper,left,right), ty=T.INT})
+				| trexp (A.OpExp{left,oper=A.TimesOp,right,pos}) = (check_int(trexp left, pos); check_int(trexp right, pos); {exp=R.opExp(oper,left,right), ty=T.INT})
+				| trexp (A.OpExp{left,oper=A.DivideOp,right,pos}) = (check_int(trexp left, pos); check_int(trexp right, pos); {exp=R.opExp(oper,left,right), ty=T.INT})
+				| trexp (A.OpExp{left,oper=A.EqOp,right,pos}) = check_comparision (oper, left, right, pos)
+				| trexp (A.OpExp{left,oper=A.NeqOp,right,pos}) = check_comparision (oper, left, right, pos)
+				| trexp (A.OpExp{left,oper=A.LtOp,right,pos}) = (check_int(trexp left, pos); check_int(trexp right, pos); {exp=R.opExp(oper,left,right), ty=T.INT})
+				| trexp (A.OpExp{left,oper=A.GtOp,right,pos}) = (check_int(trexp left, pos); check_int(trexp right, pos); {exp=R.opExp(oper,left,right), ty=T.INT})
+				| trexp (A.OpExp{left,oper=A.LeOp,right,pos}) = (check_int(trexp left, pos); check_int(trexp right, pos); {exp=R.opExp(oper,left,right), ty=T.INT})
+				| trexp (A.OpExp{left,oper=A.GeOp,right,pos}) = (check_int(trexp left, pos); check_int(trexp right, pos); {exp=R.opExp(oper,left,right), ty=T.INT})
         | trexp (A.RecordExp{fields,typ,pos}) = check_record (fields,typ,pos)
         | trexp (A.SeqExp(expseq)) = check_sequence (expseq)
         | trexp (A.AssignExp{var,exp,pos}) = check_assign (var,exp,pos)
@@ -88,7 +88,11 @@ struct
                 SOME t => {name=name,ty=t}
                 | _  => (ErrorMsg.error pos ("undefined type: " ^ S.name(typ)); {name=name,ty=T.BOTTOM})
             val params' = map transparam params
-            val venv' = S.enter(venv, name, E.FunEntry{formals=map #ty params', result=result_ty})
+            val label = Temp.newlabel()
+            fun determine_escape {name, escape, typ}  = !escape
+            val escape = map determine_escape params'
+            val newlevel = R.newLevel{parent=level,name=label,formals=escape}
+            val venv' = S.enter(venv, name, E.FunEntry{level=newlevel, label=label, formals=map #ty params', result=result_ty})
             val _ = func_declared (name,list,pos)
           in
             recursive_func_dec(venv', tenv, name::list, fundecs)
@@ -106,14 +110,16 @@ struct
                 SOME t => {name=name,ty=t}
                 | _  => (ErrorMsg.error pos ("undefined type: " ^ S.name(typ)); {name=name,ty=T.BOTTOM})
             val params' = map transparam params
-            fun enterparam ({name,ty},venv) = S.enter(venv,name, E.VarEntry{ty=ty})
+            val access = Tree.allocLocal level false
+            fun enterparam ({name,ty},venv) = S.enter(venv,name, E.VarEntry{access=access,ty=ty})
             val venv'' = foldl enterparam venv params'
-            val  {exp=_,ty=body_ty} = transExp(venv'',tenv) body
-            val rt = case S.look(venv,name) of
-              SOME (E.FunEntry{formals=f,result=return_ty}) => return_ty
-              | _ => (ErrorMsg.error pos ("function does not exists: " ^ S.name(name)); T.BOTTOM)
+            val (rt,lvl) = case S.look(venv,name) of
+              SOME (E.FunEntry{level=lvl,label=lbl,formals=f,result=return_ty}) => (return_ty,lvl)
+              | _ => (ErrorMsg.error pos ("function does not exists: " ^ S.name(name)); (T.BOTTOM,R.outermost))
+            val  {exp=exp,ty=body_ty} = transExp(venv'',tenv, break, lvl) body
             val _ = if types_equal (actual_ty (body_ty,pos),actual_ty (rt,pos)) then () else ErrorMsg.error pos ("declared function type and expression do not match")
           in
+            R.procEntryExit {level=lvl, body=exp};
             recursive_func_body (venv, tenv,fundecs)
           end
 
@@ -141,12 +147,13 @@ struct
 
       and create_var (venv,tenv,name,escape,typ,init,pos) =
         let
-          val  {exp=_,ty=ty} = transExp (venv,tenv) init
+          val  {exp=_,ty=ty} = trexp init
+          val access = Tree.allocLocal level false
         in
           ((case typ of
               SOME (sym,p) => if types_equal (actual_ty ((get_type (tenv,sym,p)),p),actual_ty (ty,pos)) then () else ErrorMsg.error pos ("declared type " ^ (T.name (get_type (tenv,sym,p))) ^ " and expression " ^ (T.name ty) ^" do not match")
             | NONE => (if ty=T.NIL then ErrorMsg.error pos ("initializing nil expressions not constrained by record type") else () ));
-          S.enter(venv,name,E.VarEntry{ty=ty}))
+          S.enter(venv,name,E.VarEntry{access=access,ty=ty}))
         end
 
       and get_type (tenv,sym,pos) = (case S.look(tenv,sym) of
@@ -158,8 +165,8 @@ struct
         | trvar (A.SubscriptVar(v,exp,pos)) = check_subscript_var (v,exp,pos)
 
       and check_simple_var (id,pos) = (case S.look(venv, id) of
-          SOME (E.VarEntry{ty}) => {exp=(), ty=actual_ty (ty,pos)}
-        | _ => (ErrorMsg.error pos ("undefined variable: " ^ S.name(id)); {exp=(), ty=T.BOTTOM}))
+          SOME (E.VarEntry{access,ty}) => {exp=R.simpleVar(access,level), ty=actual_ty (ty,pos)}
+        | _ => (ErrorMsg.error pos ("undefined variable: " ^ S.name(id)); {exp=R.nilExp(), ty=T.BOTTOM}))
 
       and check_field_var (var,id,pos) =
         let
@@ -167,12 +174,12 @@ struct
         in
           (case actual_ty (ty,pos) of
               T.RECORD(fieldlist,_) => fields_contain_sym (pos,fieldlist,id)
-            | T.BOTTOM => {exp=(), ty=T.BOTTOM}
-            | _ => (ErrorMsg.error pos ("variable not a record"); {exp=(), ty=T.BOTTOM})) (* IMPROVE: error message *)
+            | T.BOTTOM => {exp=R.nilExp(), ty=T.BOTTOM}
+            | _ => (ErrorMsg.error pos ("variable not a record"); {exp=R.nilExp(), ty=T.BOTTOM})) (* IMPROVE: error message *)
         end
 
-      and fields_contain_sym (pos,[],sym) = (ErrorMsg.error pos ("undefined record field : " ^ S.name(sym)); {exp=(), ty=T.BOTTOM})
-        | fields_contain_sym (pos,(id,ty)::fieldlist,sym) = if sym=id then {exp=(), ty=ty} else fields_contain_sym (pos,fieldlist,sym)
+      and fields_contain_sym (pos,[],sym) = (ErrorMsg.error pos ("undefined record field : " ^ S.name(sym)); {exp=R.nilExp(), ty=T.BOTTOM})
+        | fields_contain_sym (pos,(id,ty)::fieldlist,sym) = if sym=id then {exp=()(*TODO*), ty=ty} else fields_contain_sym (pos,fieldlist,sym)
 
       and check_subscript_var (var,exp,pos) =
         let
@@ -180,9 +187,9 @@ struct
           val {exp=_,ty=ty} = trvar var
         in
           (case actual_ty (ty,pos) of
-              T.ARRAY(ty,_) => {exp=(), ty=ty}
-            | T.BOTTOM => {exp=(), ty=T.BOTTOM}
-            | _ => (ErrorMsg.error pos ("variable not an array"); {exp=(), ty=T.BOTTOM})) (* IMPROVE: error message *)
+              T.ARRAY(ty,_) => {exp=()(*TODO*), ty=ty}
+            | T.BOTTOM => {exp=R.nilExp(), ty=T.BOTTOM}
+            | _ => (ErrorMsg.error pos ("variable not an array"); {exp=R.nilExp(), ty=T.BOTTOM})) (* IMPROVE: error message *)
         end
 
       and actual_ty (ty,pos) =
@@ -197,10 +204,10 @@ struct
         end
 
       and check_func (func,args,pos) =  (case S.look(venv, func) of
-          SOME (E.FunEntry{formals=tylist, result=ty}) => check_args(args,tylist,ty,pos)
-        | _ => (ErrorMsg.error pos ("undefined function: " ^ S.name(func)); {exp=(), ty=T.BOTTOM}))
+          SOME (E.FunEntry{level=lvl,label=lbl,formals=tylist, result=ty}) => check_args(lbl,args,tylist,ty,pos)
+        | _ => (ErrorMsg.error pos ("undefined function: " ^ S.name(func)); {exp=R.nilExp(), ty=T.BOTTOM}))
 
-      and check_args (args,tylist,ty,pos) =
+      and check_args (lbl,args,tylist,ty,pos) =
         let
           fun check_arg_types ((exp::exps),(t::tys)) =
             let
@@ -212,15 +219,15 @@ struct
           | check_arg_types (_,_) = false
           val return_ty = if List.length(tylist)=List.length(args) then (if check_arg_types(args,tylist) then ty else T.BOTTOM) else (ErrorMsg.error pos ("incorrect number of arguments"); T.BOTTOM)
         in
-          {exp=(), ty=return_ty}
+          {exp=R.callExp(lbl,args), ty=return_ty}
         end
 
       and check_record (fields,typ,pos) = (case S.look(tenv, typ) of
           SOME t => (case actual_ty (t,pos) of
             T.RECORD(typelist,_) => check_field_types (fields, typelist, pos, typ)
-            | T.BOTTOM => {exp=(), ty=T.BOTTOM}
-            | _ => (ErrorMsg.error pos ("not record type: " ^ S.name(typ)); {exp=(), ty=T.BOTTOM}))
-        | NONE => (ErrorMsg.error pos ("undefined record: " ^ S.name(typ)); {exp=(), ty=T.BOTTOM}))
+            | T.BOTTOM => {exp=R.nilExp(), ty=T.BOTTOM}
+            | _ => (ErrorMsg.error pos ("not record type: " ^ S.name(typ)); {exp=R.nilExp(), ty=T.BOTTOM}))
+        | NONE => (ErrorMsg.error pos ("undefined record: " ^ S.name(typ)); {exp=R.nilExp(), ty=T.BOTTOM}))
 
       and check_field_types (fields, types, pos, record_ty) =
         let
@@ -236,12 +243,17 @@ struct
               if types_equal(actual_ty (ty,pos),actual_ty (typ,pos)) then true else (ErrorMsg.error pos ("record field type does not match expression"); false) (* IMPROVE: error message *)
             end
         in
-          if compare_field_types (fields, types) then {exp=(), ty=return_ty} else {exp=(), ty=T.BOTTOM}
+          if compare_field_types (fields, types) then {exp=() (*TODO*), ty=return_ty} else {exp=R.nilExp(), ty=T.BOTTOM}
         end
 
-      and check_sequence [] = {exp=(), ty=Types.UNIT}
-        | check_sequence ((exp, _)::nil) = trexp exp
-        | check_sequence ((exp, _)::expseq) = (trexp exp; check_sequence (expseq))
+      and check_sequence (expseq) =
+          let
+            fun trseq [] = {exp=R.nilExp(), ty=Types.UNIT}
+              | trseq ((exp, _)::nil) = {exp=R.seqExp(expseq), ty=#ty trexp exp}
+              | trseq ((exp, _)::exps) = (trexp exp; trseq (exps))
+          in
+            trseq (expseq)
+          end
 
       and check_assign (var,exp,pos) =
         let
@@ -249,8 +261,8 @@ struct
           val {exp=_,ty=tyr} = trexp exp
         in
           if types_equal (actual_ty (tyl,pos),actual_ty (tyr,pos))
-          then {exp=(), ty=T.UNIT}
-          else (ErrorMsg.error pos ("variable and expresion of different type"); {exp=(), ty=T.BOTTOM}) (* IMPROVE: error message *)
+          then {exp=R.assignExp(var,exp), ty=T.UNIT}
+          else (ErrorMsg.error pos ("variable and expresion of different type"); {exp=R.nilExp(), ty=T.BOTTOM}) (* IMPROVE: error message *)
         end
 
       and check_if (exp1,exp2,exp3,pos) =
@@ -261,28 +273,31 @@ struct
                 val {exp=_,ty=ty2} = trexp exp2
                 val {exp=_,ty=ty3} = trexp exp
               in
-                if types_equal(actual_ty (ty2,pos),actual_ty (ty3,pos)) then {exp=(), ty=ty2} else (ErrorMsg.error pos ("types of then - else differ");{exp=(), ty=T.BOTTOM}) (* IMPROVE: what if the type ty2 is a subtype (want supertype)*)
+                if types_equal(actual_ty (ty2,pos),actual_ty (ty3,pos)) then {exp=R.ifThenElseExp(exp1,exp2,exp), ty=ty2} else (ErrorMsg.error pos ("types of then - else differ");{exp=R.nilExp(), ty=T.BOTTOM}) (* IMPROVE: what if the type ty2 is a subtype (want supertype)*)
               end
-          | NONE => (check_unit (trexp exp2,pos); {exp=(), ty=T.UNIT})))
+          | NONE => (check_unit (trexp exp2,pos); {exp=R.ifThenExp(exp1,exp2), ty=T.UNIT})))
 
       and check_while (exp1,exp2,pos) =
-        (depth := !depth + 1;
+        (val break_label = Temp.newlabel()
+         depth := !depth + 1;
          check_int (trexp exp1,pos);
-         check_unit (trexp exp2,pos);
+         check_unit (transExp(venv,tenv,break_label,level) exp2,pos);
          depth := !depth - 1;
-         {exp=(), ty=T.UNIT})
+         {exp=R.whileExp(break_label,exp1,exp2), ty=T.UNIT})
 
       and check_for (var,exp1,exp2,exp3,pos) =
-        (depth := !depth + 1;
+        (val break_label = Temp.newlabel()
+         val access = Tree.allocLocal level false
+         depth := !depth + 1;
          check_int (trexp exp1,pos);
          check_int (trexp exp2,pos);
-         check_unit (transExp(S.enter(venv,var,E.VarEntry{ty=T.INT}),tenv) exp3,pos);
+         check_unit (transExp(S.enter(venv,var,E.VarEntry{access=access,ty=T.INT}),tenv,break_label,level) exp3,pos);
          depth := !depth - 1;
-         {exp=(), ty=T.UNIT})
+         {exp=R.forExp(break_label,var,exp1,exp2,exp3), ty=T.UNIT})
 
       and check_break (pos) =
         (if !depth>0 then () else ErrorMsg.error pos ("break must be inside loop");
-         {exp=(), ty=T.UNIT})
+         {exp=R.breakExp(break), ty=T.UNIT})
 
       and check_let (decs,expseq,pos) =
         let
@@ -291,15 +306,15 @@ struct
           val {venv=new_venv,tenv=new_tenv} = transDecs (venv,tenv,decs)
           val _ = depth := !curr_depth
         in
-          transExp (new_venv,new_tenv) expseq
+          transExp (new_venv,new_tenv,break,level) expseq
         end
 
       and check_array (typ,exp1,exp2,pos) = (case S.look(tenv, typ) of
           SOME t => (case actual_ty (t,pos) of
             T.ARRAY(ty,_) => check_array_init (t,ty,exp1,exp2,pos)
-            | T.BOTTOM => {exp=(), ty=T.BOTTOM}
-            | _ => (ErrorMsg.error pos ("not array type: " ^ S.name(typ)); {exp=(), ty=T.BOTTOM}))
-        | NONE => (ErrorMsg.error pos ("undefined array: " ^ S.name(typ)); {exp=(), ty=T.BOTTOM}))
+            | T.BOTTOM => {exp=R.nilExp(), ty=T.BOTTOM}
+            | _ => (ErrorMsg.error pos ("not array type: " ^ S.name(typ)); {exp=R.nilExp(), ty=T.BOTTOM}))
+        | NONE => (ErrorMsg.error pos ("undefined array: " ^ S.name(typ)); {exp=R.nilExp(), ty=T.BOTTOM}))
 
       and check_array_init (t,ty,exp1,exp2,pos) =
         let
@@ -307,7 +322,7 @@ struct
           val return_ty = if types_equal (actual_ty (typ,pos),actual_ty (ty,pos)) then t else (ErrorMsg.error pos ("array initialization does not match type"); T.BOTTOM)
         in
           (check_int (trexp exp1,pos);
-           {exp=(), ty=return_ty})
+           {exp=() (*TODO*), ty=return_ty})
         end
 
       and check_cycles (tenv, []) = ()
@@ -332,12 +347,12 @@ struct
         | check_unit ({exp=_,ty=T.BOTTOM},_) = ()
         | check_unit ({exp=_,ty=_},pos) = ErrorMsg.error pos "unit argument expected"
 
-      and check_comparision (exp1,exp2,pos) =
+      and check_comparision (oper,exp1,exp2,pos) =
         let
           val {exp=_,ty=ty1} = trexp exp1
           val {exp=_,ty=ty2} = trexp exp2
         in
-          if types_equal (actual_ty (ty1,pos),actual_ty (ty2,pos)) then {exp=(),ty=T.INT} else (ErrorMsg.error pos ("types do not match"); {exp=(),ty=T.BOTTOM}) (* IMPROVE: what if the type ty1 is a subtype (want supertype)*)
+          if types_equal (actual_ty (ty1,pos),actual_ty (ty2,pos)) then {exp=R.opExp(oper,exp1,exp2),ty=T.INT} else (ErrorMsg.error pos ("types do not match"); {exp=R.nilExp(), ty=T.BOTTOM}) (* IMPROVE: what if the type ty1 is a subtype (want supertype)*)
         end
     in
       trexp
@@ -345,9 +360,10 @@ struct
 
   fun transProg exp =
     let
-      val expty = (transExp (E.base_venv, E.base_tenv) exp)
+      val level = R.newLevel{parent=R.outermost,name=Temp.newlabel(),formals=[]}
+      val expty = (transExp (E.base_venv, E.base_tenv, Temp.newlabel(), level) exp)
     in
-      ()
+      R.procEntryExit {level=level, body=#exp expty};
     end
 
 end
