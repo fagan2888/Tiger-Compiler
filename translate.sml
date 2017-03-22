@@ -27,9 +27,9 @@ sig
   val assignExp: exp * exp -> exp
   val ifThenExp: exp * exp -> exp
   val ifThenElse: exp * exp * exp -> exp
-  val whileExp: Temp.label * exp * exp -> exp (* TODO: Gabe *)
-	val forExp: Temp.label * exp * exp * exp * exp -> exp (* TODO:Gabe *)
-	val breakExp: Temp.label -> exp (* TODO:Gabe *)
+  val whileExp: Temp.label * exp * exp -> exp
+	val forExp: Temp.label * exp * exp * exp * exp -> exp
+	val breakExp: Temp.label -> exp
   val arrayExp: exp * exp -> exp (* TODO: Gabe *)
 
 
@@ -170,4 +170,20 @@ struct
         | (Ex e2, Ex e3) => Ex(T.ESEQ(T.SEQ[(unCx exp1)(t,f),T.LABEL t,T.MOVE(T.TEMP r,e2),T.JUMP(T.NAME j,[j]),T.LABEL f,T.MOVE(T.TEMP r,e3),T.LABEL j], T.TEMP(r)))
         | (_,_) => Ex (T.CONST (0)) (* TODO: can't do this, then and else differ *)
     end
+
+  fun whileExp (break,cond,body) =
+    let
+      val l1 = Temp.newlabel() and l2 = Temp.newlabel()
+    in
+      Nx (T.SEQ[T.JUMP(T.NAME l1,[l1]),T.LABEL l2,unNx body,T.LABEL l1, unCx cond (l2,break),T.LABEL break])
+    end
+
+  fun forExp (break, var, lo, hi, exp) =
+    let
+      val l1 = Temp.newlabel() and l2 = Temp.newlabel() and l3 = Temp.newlabel()
+    in
+      Nx (T.SEQ[T.MOVE(unEx var, unEx lo),T.CJUMP(T.LE, unEx var, unEx hi, l2, l3),T.LABEL l1,T.MOVE(unEx var, T.BINOP(T.PLUS, unEx var, T.CONST(1))), T.LABEL l2, unNx exp, T.CJUMP(T.LT, unEx var, unEx hi, l1, l3), T.LABEL l3])
+    end
+
+  fun breakExp (break) = Nx (T.JUMP(T.NAME break,[break]))
 end
