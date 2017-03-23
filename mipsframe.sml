@@ -52,4 +52,8 @@ fun externalCall (s,args) =
 
 fun procEntryExit1 (frame,body) = body
 
+datatype frag = PROC of {body: Tree.stm, frame: frame}
+                | STRING of Temp.label * string
+
+
 end
