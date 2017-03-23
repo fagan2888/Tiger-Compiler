@@ -1,9 +1,10 @@
-structure T = Tree
+structure Frame = MipsFrame
 
 signature TRANSLATE =
 sig
   type level
   type access
+  type exp
   val outermost: level
   val newLevel: {parent: level, name: Temp.label, formals: bool list} -> level
   val formals: level -> access list
@@ -15,7 +16,6 @@ sig
 
   val simpleVar: access * level -> exp
   val subscriptVar : exp * exp -> exp
-  val fieldVar : exp * exp -> exp (* TODO *)
 
   val nilExp: unit -> exp
   val intExp: int -> exp
@@ -37,10 +37,16 @@ end
 structure Translate =
 struct
 
+  structure T = Tree
+
   datatype level = TOP
-             | LEVEL of {frame:Frame.frame, parent: level, unique unit ref}
+                 | LEVEL of {frame:Frame.frame, parent: level, unique: unit ref}
 
   type access = level * Frame.access
+
+  datatype exp = Ex of T.exp
+               | Nx of T.stm
+               | Cx of Temp.label * Temp.label -> T.stm
 
   val outermost = TOP
   fun newLevel ({parent=p,name=n,formals=f}) = LEVEL({parent=p, frame=Frame.newFrame{name=n, formals=true::f}, unique=ref ()})
@@ -65,7 +71,7 @@ struct
       val frame = case l of
         LEVEL({frame=f, parent=p, unique=u}) => f
         | outermost => Frame.newFrame ({name=Temp.newlabel(), formals=[]})
-      val pbody = T.MOVE(T.TEMP(F.RV), unEx (my_body))
+      val pbody = T.MOVE(T.TEMP(Frame.RV), unEx (my_body))
       val rbody = Frame.procEntryExit1(frame, pbody)
       val frag = Frame.PROC({body=rbody,frame=frame})
     in
@@ -73,10 +79,6 @@ struct
     end
 
   fun getResult () = !frags
-
-  datatype exp = Ex of T.exp
-               | Nx of T.stm
-               | Cx of Temp.label * Temp.label -> T.stm
 
   fun unEx (Ex e) = e
     | unEx (Cx c) =
@@ -137,12 +139,12 @@ struct
     let
       val r = Temp.newtemp()
       val init = [T.MOVE(T.TEMP(r),T.CALL(T.NAME(Temp.newlabel()),[T.CONST(List.length(exps)*Frame.wordSize)]))]
-      fun create_seq (exp, list) = T.MOVE(T.MEM(T.BINOP(T.PLUS,T.TEMP(r),T.CONST((List.length(list)-1)*F.wordSize))),unEx(ex))::list
+      fun create_seq (exp, list) = T.MOVE(T.MEM(T.BINOP(T.PLUS,T.TEMP(r),T.CONST((List.length(list)-1)*Frame.wordSize))),unEx(ex))::list
       val rec_seq = foldl create_seq init exps
     in
       Ex(T.ESEQ(T.SEQ(rec_seq),T.TEMP(r)))
     end
-				
+
   fun seqExp [] = Ex (T.CONST 0) (* TODO: can't do this, empty expression seq*)
     | seqExp [exp] = exp
     | seqExp (exps) = Ex(T.ESEQ(T.SEQ(map unNx List.take(exps,List.length(exps)-1)), unEx List.last(exps)))
@@ -192,7 +194,7 @@ struct
     let
       val r = Temp.newtemp()
       val init = [T.MOVE(T.TEMP(r),T.CALL(T.NAME(Temp.newlabel()),[T.CONST(List.length(exps)*Frame.wordSize)]))]
-      fun create_seq (exp, list) = T.MOVE(T.MEM(T.BINOP(T.PLUS,T.TEMP(r),T.CONST((List.length(list)-1)*F.wordSize))),unEx(ex))::list
+      fun create_seq (exp, list) = T.MOVE(T.MEM(T.BINOP(T.PLUS,T.TEMP(r),T.CONST((List.length(list)-1)*Frame.wordSize))),unEx(ex))::list
       val rec_seq = foldl create_seq init exps
     in
       Ex(T.ESEQ(T.SEQ(rec_seq),T.TEMP(r)))
@@ -203,13 +205,11 @@ struct
 		let
 				val r = Temp.newtemp();
 				val size = unEx(exp1);
-				fun arrSeq size = T.SEQ(T.MOVE(T.MEM(T.BINOP(T.PLUS,T.TEMP(r),T.CONST(F.wordSize*size))),unEx(exp2)),arrSeq(size-1))
-					| arrSeq 1 = T.MOVE(T.MEM(T.BINOP(T.PLUS,T.TEMP(r),T.CONST(F.wordSize))),unEx(exp2)) 
+				fun arrSeq size = T.SEQ(T.MOVE(T.MEM(T.BINOP(T.PLUS,T.TEMP(r),T.CONST(Frame.wordSize*size))),unEx(exp2)),arrSeq(size-1))
+					| arrSeq 1 = T.MOVE(T.MEM(T.BINOP(T.PLUS,T.TEMP(r),T.CONST(Frame.wordSize))),unEx(exp2))
 		in
 				Ex(T.ESEQ(T.SEQ(T.MOVE(T.TEMP(r),T.CALL(T.NAME(Temp.newlabel()),T.CONST(Frame.wordSize*size))),arrSeq(size)),T.TEMP(r)))
 		end
-				
-		
-end
 
-	
+
+end

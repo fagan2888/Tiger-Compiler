@@ -14,10 +14,8 @@ env.sml
 temp.sig
 temp.sml
 frame.sig
-findescape.sml
 mipsframe.sml
 translate.sml
-findescape.sml
 tree.sml
 main.sml
 $/smlnj-lib.cm

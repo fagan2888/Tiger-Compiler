@@ -1,9 +1,3 @@
-structure A = Absyn
-structure S = Symbol
-structure T = Types
-structure E = Env
-structure R = Translate
-
 signature SEMANT =
 sig
   val transProg : A.exp -> unit
@@ -11,6 +5,12 @@ end
 
 structure Semant : SEMANT =
 struct
+  structure A = Absyn
+  structure S = Symbol
+  structure T = Types
+  structure E = Env
+  structure R = Translate
+
   type expty = {exp: R.exp, ty: T.ty}
   type venv = E.enventry S.table
   type tenv = T.ty S.table
@@ -179,7 +179,7 @@ struct
         end
 
       and fields_contain_sym (pos,[],sym) = (ErrorMsg.error pos ("undefined record field : " ^ S.name(sym)); {exp=R.nilExp(), ty=T.BOTTOM})
-        | fields_contain_sym (pos,(id,ty)::fieldlist,sym) = if sym=id then {exp=()(*TODO*), ty=ty} else fields_contain_sym (pos,fieldlist,sym)
+        | fields_contain_sym (pos,(id,ty)::fieldlist,sym) = if sym=id then {exp=(R.nilExp())(*TODO*), ty=ty} else fields_contain_sym (pos,fieldlist,sym)
 
       and check_subscript_var (var,exp,pos) =
         let
@@ -243,13 +243,13 @@ struct
               if types_equal(actual_ty (ty,pos),actual_ty (typ,pos)) then true else (ErrorMsg.error pos ("record field type does not match expression"); false) (* IMPROVE: error message *)
             end
         in
-          if compare_field_types (fields, types) then {exp=() (*TODO*), ty=return_ty} else {exp=R.nilExp(), ty=T.BOTTOM}
+          if compare_field_types (fields, types) then {exp=(R.nilExp()) (*TODO*), ty=return_ty} else {exp=R.nilExp(), ty=T.BOTTOM}
         end
 
       and check_sequence (expseq) =
           let
             fun trseq [] = {exp=R.nilExp(), ty=Types.UNIT}
-              | trseq ((exp, _)::nil) = {exp=R.seqExp(expseq), ty=#ty trexp exp}
+              | trseq ((exp, _)::nil) = {exp=R.seqExp(expseq), ty=(#ty trexp exp)}
               | trseq ((exp, _)::exps) = (trexp exp; trseq (exps))
           in
             trseq (expseq)
@@ -278,22 +278,28 @@ struct
           | NONE => (check_unit (trexp exp2,pos); {exp=R.ifThenExp(exp1,exp2), ty=T.UNIT})))
 
       and check_while (exp1,exp2,pos) =
-        (val break_label = Temp.newlabel()
-         depth := !depth + 1;
-         check_int (trexp exp1,pos);
-         check_unit (transExp(venv,tenv,break_label,level) exp2,pos);
-         depth := !depth - 1;
-         {exp=R.whileExp(break_label,exp1,exp2), ty=T.UNIT})
+        let
+          val break_label = Temp.newlabel()
+        in
+          (depth := !depth + 1;
+          check_int (trexp exp1,pos);
+          check_unit (transExp(venv,tenv,break_label,level) exp2,pos);
+          depth := !depth - 1;
+          {exp=R.whileExp(break_label,exp1,exp2), ty=T.UNIT})
+        end
 
       and check_for (var,exp1,exp2,exp3,pos) =
-        (val break_label = Temp.newlabel()
-         val access = Tree.allocLocal level false
-         depth := !depth + 1;
-         check_int (trexp exp1,pos);
-         check_int (trexp exp2,pos);
-         check_unit (transExp(S.enter(venv,var,E.VarEntry{access=access,ty=T.INT}),tenv,break_label,level) exp3,pos);
-         depth := !depth - 1;
-         {exp=R.forExp(break_label,var,exp1,exp2,exp3), ty=T.UNIT})
+        let
+          val break_label = Temp.newlabel()
+          val access = Tree.allocLocal level false
+        in
+          (depth := !depth + 1;
+          check_int (trexp exp1,pos);
+          check_int (trexp exp2,pos);
+          check_unit (transExp(S.enter(venv,var,E.VarEntry{access=access,ty=T.INT}),tenv,break_label,level) exp3,pos);
+          depth := !depth - 1;
+          {exp=R.forExp(break_label,var,exp1,exp2,exp3), ty=T.UNIT})
+        end
 
       and check_break (pos) =
         (if !depth>0 then () else ErrorMsg.error pos ("break must be inside loop");
@@ -363,7 +369,7 @@ struct
       val level = R.newLevel{parent=R.outermost,name=Temp.newlabel(),formals=[]}
       val expty = (transExp (E.base_venv, E.base_tenv, Temp.newlabel(), level) exp)
     in
-      R.procEntryExit {level=level, body=#exp expty};
+      R.procEntryExit {level=level, body=(#exp expty)}
     end
 
 end
