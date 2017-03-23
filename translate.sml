@@ -16,6 +16,7 @@ sig
 
   val simpleVar: access * level -> exp
   val subscriptVar : exp * exp -> exp
+  (* TODO: fieldVar*)
 
   val nilExp: unit -> exp
   val intExp: int -> exp
@@ -109,8 +110,7 @@ struct
       Ex (Frame.exp frm find_link(lvl1, lvl2))
     end
 
-	fun subscriptVar (v,exp) =
-		Ex(T.MEM(T.BINOP(T.PLUS,T.MEM(v),T.CONST(exp*Frame.wordSize))))
+	fun subscriptVar (v,exp) = Ex(T.MEM(T.BINOP(T.PLUS,T.MEM(v),T.CONST(exp*Frame.wordSize))))
 
   fun nilExp () = Ex (T.CONST (0))
   fun intExp (num) = Ex (T.CONST (num))
