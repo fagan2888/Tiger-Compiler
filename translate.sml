@@ -14,7 +14,7 @@ sig
   val getResult: unit -> Frame.frag list
 
   val simpleVar: access * level -> exp
-  val subscriptVar : exp * exp -> exp (* TODO *)
+  val subscriptVar : exp * exp -> exp
   val fieldVar : exp * exp -> exp (* TODO *)
 
   val nilExp: unit -> exp
@@ -30,7 +30,7 @@ sig
   val whileExp: Temp.label * exp * exp -> exp
 	val forExp: Temp.label * exp * exp * exp * exp -> exp
 	val breakExp: Temp.label -> exp
-  val arrayExp: exp * exp -> exp (* TODO: Gabe *)
+  val arrayExp: exp * exp -> exp
 
 end
 
@@ -106,6 +106,9 @@ struct
     in
       Ex (Frame.exp frm find_link(lvl1, lvl2))
     end
+
+	fun subscriptVar (v,exp) =
+		Ex(T.MEM(T.BINOP(T.PLUS,T.MEM(v),T.CONST(exp*Frame.wordSize))))
 
   fun nilExp () = Ex (T.CONST (0))
   fun intExp (num) = Ex (T.CONST (num))
