@@ -32,8 +32,6 @@ sig
 	val breakExp: Temp.label -> exp
   val arrayExp: exp * exp -> exp (* TODO: Gabe *)
 
-
-
 end
 
 structure Translate =
@@ -141,7 +139,7 @@ struct
     in
       Ex(T.ESEQ(T.SEQ(rec_seq),T.TEMP(r)))
     end
-
+				
   fun seqExp [] = Ex (T.CONST 0) (* TODO: can't do this, empty expression seq*)
     | seqExp [exp] = exp
     | seqExp (exps) = Ex(T.ESEQ(T.SEQ(map unNx List.take(exps,List.length(exps)-1)), unEx List.last(exps)))
@@ -186,4 +184,29 @@ struct
     end
 
   fun breakExp (break) = Nx (T.JUMP(T.NAME break,[break]))
+
+	fun recordExp (exps) =
+    let
+      val r = Temp.newtemp()
+      val init = [T.MOVE(T.TEMP(r),T.CALL(T.NAME(Temp.newlabel()),[T.CONST(List.length(exps)*Frame.wordSize)]))]
+      fun create_seq (exp, list) = T.MOVE(T.MEM(T.BINOP(T.PLUS,T.TEMP(r),T.CONST((List.length(list)-1)*F.wordSize))),unEx(ex))::list
+      val rec_seq = foldl create_seq init exps
+    in
+      Ex(T.ESEQ(T.SEQ(rec_seq),T.TEMP(r)))
+    end
+
+
+	fun arrayExp (exp1, exp2) =
+		let
+				val r = Temp.newtemp();
+				val size = unEx(exp1);
+				fun arrSeq size = T.SEQ(T.MOVE(T.MEM(T.BINOP(T.PLUS,T.TEMP(r),T.CONST(F.wordSize*size))),unEx(exp2)),arrSeq(size-1))
+					| arrSeq 1 = T.MOVE(T.MEM(T.BINOP(T.PLUS,T.TEMP(r),T.CONST(F.wordSize))),unEx(exp2)) 
+		in
+				Ex(T.ESEQ(T.SEQ(T.MOVE(T.TEMP(r),T.CALL(T.NAME(Temp.newlabel()),T.CONST(Frame.wordSize*size))),arrSeq(size)),T.TEMP(r)))
+		end
+				
+		
 end
+
+	
