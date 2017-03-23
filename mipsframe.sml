@@ -1,26 +1,25 @@
 structure MipsFrame : FRAME =
 struct
 
-type frame = {name : Temp.label, formals: access list, locals: int ref}
-
 datatype access = InFrame of int
 								| InReg of Temp.temp
+
+type frame = {name : Temp.label, formals: access list, locals: int ref}
 
 fun newFrame {name:Temp.label,formals:bool list} =
 	let val locAlloc = ref 0
 			val numRegs = ref 0
-			fun transFormals true::formals =
+			fun transFormals (true::formals) =
 				let in
 						locAlloc := !locAlloc+1;
 						InFrame((!locAlloc)*(~4))::transFormals(formals)
 				end
-				| transFormals false::formals =
+				| transFormals (false::formals) =
 					let in
 							numRegs := !numRegs+1;
 							if !numRegs<4
-							then InReg(Temp.newtemp())::transFormals(formals)
-							else locAlloc := !locAlloc+1;
-							InFrame((!locAlloc)*(~4))::transFormals(formals)
+							then (InReg(Temp.newtemp())::transFormals(formals))
+							else (locAlloc := !locAlloc+1; InFrame((!locAlloc)*(~4))::transFormals(formals))
 					end
 			| transFormals [] = []
 

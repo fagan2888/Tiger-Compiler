@@ -39,6 +39,7 @@ structure Translate =
 struct
 
   structure T = Tree
+  structure A = Absyn
 
   datatype level = TOP
                  | LEVEL of {frame:Frame.frame, parent: level, unique: unit ref}
