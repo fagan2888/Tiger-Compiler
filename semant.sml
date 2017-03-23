@@ -26,16 +26,16 @@ struct
         | trexp (A.IntExp(int)) = {exp=R.intExp(int), ty=T.INT}
 				| trexp (A.StringExp(string,pos)) = {exp=R.stringExp(string), ty=T.STRING}
         | trexp (A.CallExp{func,args,pos}) = check_func (func,args,pos)
-        | trexp (A.OpExp{left,oper=A.PlusOp,right,pos}) = (check_int(trexp left, pos); check_int(trexp right, pos); {exp=R.opExp(A.PlusOp,left,right), ty=T.INT})
-				| trexp (A.OpExp{left,oper=A.MinusOp,right,pos}) = (check_int(trexp left, pos); check_int(trexp right, pos); {exp=R.opExp(A.MinusOp,left,right), ty=T.INT})
-				| trexp (A.OpExp{left,oper=A.TimesOp,right,pos}) = (check_int(trexp left, pos); check_int(trexp right, pos); {exp=R.opExp(A.TimesOp,left,right), ty=T.INT})
-				| trexp (A.OpExp{left,oper=A.DivideOp,right,pos}) = (check_int(trexp left, pos); check_int(trexp right, pos); {exp=R.opExp(A.DivideOp,left,right), ty=T.INT})
+        | trexp (A.OpExp{left,oper=A.PlusOp,right,pos}) = (check_int(trexp left, pos); check_int(trexp right, pos); {exp=R.opExp(A.PlusOp,#exp (trexp left),#exp (trexp right)), ty=T.INT})
+				| trexp (A.OpExp{left,oper=A.MinusOp,right,pos}) = (check_int(trexp left, pos); check_int(trexp right, pos); {exp=R.opExp(A.MinusOp,#exp (trexp left),#exp (trexp right)), ty=T.INT})
+				| trexp (A.OpExp{left,oper=A.TimesOp,right,pos}) = (check_int(trexp left, pos); check_int(trexp right, pos); {exp=R.opExp(A.TimesOp,#exp (trexp left),#exp (trexp right)), ty=T.INT})
+				| trexp (A.OpExp{left,oper=A.DivideOp,right,pos}) = (check_int(trexp left, pos); check_int(trexp right, pos); {exp=R.opExp(A.DivideOp,#exp (trexp left),#exp (trexp right)), ty=T.INT})
 				| trexp (A.OpExp{left,oper=A.EqOp,right,pos}) = check_comparision (A.EqOp, left, right, pos)
 				| trexp (A.OpExp{left,oper=A.NeqOp,right,pos}) = check_comparision (A.NeqOp, left, right, pos)
-				| trexp (A.OpExp{left,oper=A.LtOp,right,pos}) = (check_int(trexp left, pos); check_int(trexp right, pos); {exp=R.opExp(A.LtOp,left,right), ty=T.INT})
-				| trexp (A.OpExp{left,oper=A.GtOp,right,pos}) = (check_int(trexp left, pos); check_int(trexp right, pos); {exp=R.opExp(A.GtOp,left,right), ty=T.INT})
-				| trexp (A.OpExp{left,oper=A.LeOp,right,pos}) = (check_int(trexp left, pos); check_int(trexp right, pos); {exp=R.opExp(A.LeOp,left,right), ty=T.INT})
-				| trexp (A.OpExp{left,oper=A.GeOp,right,pos}) = (check_int(trexp left, pos); check_int(trexp right, pos); {exp=R.opExp(A.GeOp,left,right), ty=T.INT})
+				| trexp (A.OpExp{left,oper=A.LtOp,right,pos}) = (check_int(trexp left, pos); check_int(trexp right, pos); {exp=R.opExp(A.LtOp,#exp (trexp left),#exp (trexp right)), ty=T.INT})
+				| trexp (A.OpExp{left,oper=A.GtOp,right,pos}) = (check_int(trexp left, pos); check_int(trexp right, pos); {exp=R.opExp(A.GtOp,#exp (trexp left),#exp (trexp right)), ty=T.INT})
+				| trexp (A.OpExp{left,oper=A.LeOp,right,pos}) = (check_int(trexp left, pos); check_int(trexp right, pos); {exp=R.opExp(A.LeOp,#exp (trexp left),#exp (trexp right)), ty=T.INT})
+				| trexp (A.OpExp{left,oper=A.GeOp,right,pos}) = (check_int(trexp left, pos); check_int(trexp right, pos); {exp=R.opExp(A.GeOp,#exp (trexp left),#exp (trexp right)), ty=T.INT})
         | trexp (A.RecordExp{fields,typ,pos}) = check_record (fields,typ,pos)
         | trexp (A.SeqExp(expseq)) = check_sequence (expseq)
         | trexp (A.AssignExp{var,exp,pos}) = check_assign (var,exp,pos)
@@ -85,12 +85,12 @@ struct
               | NONE => T.BOTTOM)
             fun transparam {name,escape,typ,pos} =
               case S.look(tenv,typ) of
-                SOME t => {name=name,ty=t}
-                | _  => (ErrorMsg.error pos ("undefined type: " ^ S.name(typ)); {name=name,ty=T.BOTTOM})
+                SOME t => {name=name,escape=escape,ty=t}
+                | _  => (ErrorMsg.error pos ("undefined type: " ^ S.name(typ)); {name=name,escape=escape,ty=T.BOTTOM})
             val params' = map transparam params
             val label = Temp.newlabel()
-            fun determine_escape {name, escape, typ}  = !escape
-            val escape = map determine_escape params'
+            fun determine_escape {name, escape, ty}  = !escape
+            val escape = (map determine_escape params')
             val newlevel = R.newLevel{parent=level,name=label,formals=escape}
             val venv' = S.enter(venv, name, E.FunEntry{level=newlevel, label=label, formals=map #ty params', result=result_ty})
             val _ = func_declared (name,list,pos)
@@ -187,7 +187,7 @@ struct
           val {exp=_,ty=ty} = trvar var
         in
           (case actual_ty (ty,pos) of
-              T.ARRAY(ty,_) => {exp=(R.subscriptVar(var,exp)), ty=ty}
+              T.ARRAY(ty,_) => {exp=R.nilExp() (*TODO*), ty=ty}
             | T.BOTTOM => {exp=R.nilExp(), ty=T.BOTTOM}
             | _ => (ErrorMsg.error pos ("variable not an array"); {exp=R.nilExp(), ty=T.BOTTOM})) (* IMPROVE: error message *)
         end
@@ -218,8 +218,9 @@ struct
           | check_arg_types ([],[]) = true
           | check_arg_types (_,_) = false
           val return_ty = if List.length(tylist)=List.length(args) then (if check_arg_types(args,tylist) then ty else T.BOTTOM) else (ErrorMsg.error pos ("incorrect number of arguments"); T.BOTTOM)
+          fun map_args arg = #exp (trexp arg)
         in
-          {exp=R.callExp(lbl,args), ty=return_ty}
+          {exp=R.callExp(lbl,(map map_args args)), ty=return_ty}
         end
 
       and check_record (fields,typ,pos) = (case S.look(tenv, typ) of
@@ -248,8 +249,9 @@ struct
 
       and check_sequence (expseq) =
           let
+            fun map_expseq (exp,pos) = #exp (trexp exp)
             fun trseq [] = {exp=R.nilExp(), ty=Types.UNIT}
-              | trseq ((exp, _)::nil) = {exp=R.seqExp(expseq), ty=(#ty trexp exp)}
+              | trseq ((exp, _)::nil) = {exp=R.seqExp(map map_expseq expseq), ty=(#ty (trexp exp))}
               | trseq ((exp, _)::exps) = (trexp exp; trseq (exps))
           in
             trseq (expseq)
@@ -257,11 +259,11 @@ struct
 
       and check_assign (var,exp,pos) =
         let
-          val {exp=_,ty=tyl} = trvar var
-          val {exp=_,ty=tyr} = trexp exp
+          val {exp=v,ty=tyl} = trvar var
+          val {exp=e,ty=tyr} = trexp exp
         in
           if types_equal (actual_ty (tyl,pos),actual_ty (tyr,pos))
-          then {exp=R.assignExp(var,exp), ty=T.UNIT}
+          then {exp=R.assignExp(v,e), ty=T.UNIT}
           else (ErrorMsg.error pos ("variable and expresion of different type"); {exp=R.nilExp(), ty=T.BOTTOM}) (* IMPROVE: error message *)
         end
 
@@ -270,12 +272,12 @@ struct
         (case exp3 of
             SOME exp =>
               let
-                val {exp=_,ty=ty2} = trexp exp2
-                val {exp=_,ty=ty3} = trexp exp
+                val {exp=e2,ty=ty2} = trexp exp2
+                val {exp=e3,ty=ty3} = trexp exp
               in
-                if types_equal(actual_ty (ty2,pos),actual_ty (ty3,pos)) then {exp=R.ifThenElseExp(exp1,exp2,exp), ty=ty2} else (ErrorMsg.error pos ("types of then - else differ");{exp=R.nilExp(), ty=T.BOTTOM}) (* IMPROVE: what if the type ty2 is a subtype (want supertype)*)
+                if types_equal(actual_ty (ty2,pos),actual_ty (ty3,pos)) then {exp=R.ifThenElseExp(#exp (trexp exp1),e2,e3), ty=ty2} else (ErrorMsg.error pos ("types of then - else differ");{exp=R.nilExp(), ty=T.BOTTOM}) (* IMPROVE: what if the type ty2 is a subtype (want supertype)*)
               end
-          | NONE => (check_unit (trexp exp2,pos); {exp=R.ifThenExp(exp1,exp2), ty=T.UNIT})))
+          | NONE => (check_unit (trexp exp2,pos); {exp=R.ifThenExp(#exp (trexp exp1),#exp (trexp exp2)), ty=T.UNIT})))
 
       and check_while (exp1,exp2,pos) =
         let
@@ -285,20 +287,21 @@ struct
           check_int (trexp exp1,pos);
           check_unit (transExp(venv,tenv,break_label,level) exp2,pos);
           depth := !depth - 1;
-          {exp=R.whileExp(break_label,exp1,exp2), ty=T.UNIT})
+          {exp=R.whileExp(break_label,#exp (trexp exp1),#exp (trexp exp2)), ty=T.UNIT})
         end
 
       and check_for (var,exp1,exp2,exp3,pos) =
         let
           val break_label = Temp.newlabel()
           val access = R.allocLocal level false
+          val i = R.simpleVar(access, level)
         in
           (depth := !depth + 1;
           check_int (trexp exp1,pos);
           check_int (trexp exp2,pos);
           check_unit (transExp(S.enter(venv,var,E.VarEntry{access=access,ty=T.INT}),tenv,break_label,level) exp3,pos);
           depth := !depth - 1;
-          {exp=R.forExp(break_label,var,exp1,exp2,exp3), ty=T.UNIT})
+          {exp=R.forExp(break_label,i,#exp (trexp exp1),#exp (trexp exp2),#exp (trexp exp3)), ty=T.UNIT})
         end
 
       and check_break (pos) =
@@ -328,7 +331,7 @@ struct
           val return_ty = if types_equal (actual_ty (typ,pos),actual_ty (ty,pos)) then t else (ErrorMsg.error pos ("array initialization does not match type"); T.BOTTOM)
         in
           (check_int (trexp exp1,pos);
-           {exp=(R.arrayExp(exp1,exp2)), ty=return_ty})
+           {exp=R.nilExp() (*TODO*), ty=return_ty})
         end
 
       and check_cycles (tenv, []) = ()
@@ -355,10 +358,10 @@ struct
 
       and check_comparision (oper,exp1,exp2,pos) =
         let
-          val {exp=_,ty=ty1} = trexp exp1
-          val {exp=_,ty=ty2} = trexp exp2
+          val {exp=e1,ty=ty1} = trexp exp1
+          val {exp=e2,ty=ty2} = trexp exp2
         in
-          if types_equal (actual_ty (ty1,pos),actual_ty (ty2,pos)) then {exp=R.opExp(oper,exp1,exp2),ty=T.INT} else (ErrorMsg.error pos ("types do not match"); {exp=R.nilExp(), ty=T.BOTTOM}) (* IMPROVE: what if the type ty1 is a subtype (want supertype)*)
+          if types_equal (actual_ty (ty1,pos),actual_ty (ty2,pos)) then {exp=R.opExp(oper,e1,e2),ty=T.INT} else (ErrorMsg.error pos ("types do not match"); {exp=R.nilExp(), ty=T.BOTTOM}) (* IMPROVE: what if the type ty1 is a subtype (want supertype)*)
         end
     in
       trexp
@@ -368,6 +371,7 @@ struct
     let
       val level = R.newLevel{parent=R.outermost,name=Temp.newlabel(),formals=[]}
       val expty = (transExp (E.base_venv, E.base_tenv, Temp.newlabel(), level) exp)
+      (* val _ = Printtree.printtree (TextIO.stdOut,#exp expty) TODO*)
     in
       R.procEntryExit {level=level, body=(#exp expty)}
     end
