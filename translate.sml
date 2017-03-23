@@ -16,7 +16,7 @@ sig
 
   val simpleVar: access * level -> exp
   val subscriptVar : exp * exp -> exp
-  (* TODO: fieldVar*)
+	val fieldVar : exp * exp -> exp
 
   val nilExp: unit -> exp
   val intExp: int -> exp
@@ -51,8 +51,10 @@ struct
                | Cx of Temp.label * Temp.label -> T.stm
 
   val outermost = TOP
+											
   fun newLevel ({parent=p,name=n,formals=f}) = LEVEL({parent=p, frame=Frame.newFrame{name=n, formals=true::f}, unique=ref ()})
-  fun formals (outermost) = []
+																										
+  fun formals (TOP) = []
     | formals (LEVEL({frame=f, parent=p, unique=u})) =
       let
         val a_list = (List.tl (Frame.formals f))
@@ -104,14 +106,16 @@ struct
 
   fun simpleVar ((lvl1, frm), lvl2) =
     let
-      fun find_link (outermost,_) = T.TEMP(Frame.FP) (* TODO: error, variable cannot be on top level *)
-        | find_link (_,outermost) = T.TEMP(Frame.FP) (* TODO: error, variable cannot be on top level *)
+      fun find_link (TOP,_) = T.TEMP(Frame.FP) (* TODO: error, variable cannot be on top level *)
+        | find_link (_,TOP) = T.TEMP(Frame.FP) (* TODO: error, variable cannot be on top level *)
         | find_link (lvl1 as LEVEL({frame=f1, parent=p1, unique=u1}),LEVEL({frame=f2, parent=p2, unique=u2})) = if u1=u2 then T.TEMP(Frame.FP) else T.MEM(find_link(lvl1, p2))
     in
       Ex (Frame.exp frm (find_link(lvl1, lvl2)))
     end
 
 	fun subscriptVar (v,exp) = Ex(T.MEM(T.BINOP(T.PLUS,T.MEM(v),T.CONST(exp*Frame.wordsize))))
+
+	fun fieldVar (v,id) = Ex(T.MEM(T.BINOP(T.PLUS,T.MEM(v),T.MEM(id))))
 
   fun nilExp () = Ex (T.CONST (0))
   fun intExp (num) = Ex (T.CONST (num))
