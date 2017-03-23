@@ -371,7 +371,8 @@ struct
     let
       val level = R.newLevel{parent=R.outermost,name=Temp.newlabel(),formals=[]}
       val expty = (transExp (E.base_venv, E.base_tenv, Temp.newlabel(), level) exp)
-      (* val _ = Printtree.printtree (TextIO.stdOut,#exp expty) TODO*)
+      val tree = R.unNx (#exp expty)
+      val _ = Printtree.printtree (TextIO.stdOut,tree)
     in
       R.procEntryExit {level=level, body=(#exp expty)}
     end
