@@ -1,6 +1,6 @@
 signature SEMANT =
 sig
-  val transProg : A.exp -> unit
+  val transProg : Absyn.exp -> unit
 end
 
 structure Semant : SEMANT =
@@ -26,16 +26,16 @@ struct
         | trexp (A.IntExp(int)) = {exp=R.intExp(int), ty=T.INT}
 				| trexp (A.StringExp(string,pos)) = {exp=R.stringExp(string), ty=T.STRING}
         | trexp (A.CallExp{func,args,pos}) = check_func (func,args,pos)
-        | trexp (A.OpExp{left,oper=A.PlusOp,right,pos}) = (check_int(trexp left, pos); check_int(trexp right, pos); {exp=R.opExp(oper,left,right), ty=T.INT})
-				| trexp (A.OpExp{left,oper=A.MinusOp,right,pos}) = (check_int(trexp left, pos); check_int(trexp right, pos); {exp=R.opExp(oper,left,right), ty=T.INT})
-				| trexp (A.OpExp{left,oper=A.TimesOp,right,pos}) = (check_int(trexp left, pos); check_int(trexp right, pos); {exp=R.opExp(oper,left,right), ty=T.INT})
-				| trexp (A.OpExp{left,oper=A.DivideOp,right,pos}) = (check_int(trexp left, pos); check_int(trexp right, pos); {exp=R.opExp(oper,left,right), ty=T.INT})
-				| trexp (A.OpExp{left,oper=A.EqOp,right,pos}) = check_comparision (oper, left, right, pos)
-				| trexp (A.OpExp{left,oper=A.NeqOp,right,pos}) = check_comparision (oper, left, right, pos)
-				| trexp (A.OpExp{left,oper=A.LtOp,right,pos}) = (check_int(trexp left, pos); check_int(trexp right, pos); {exp=R.opExp(oper,left,right), ty=T.INT})
-				| trexp (A.OpExp{left,oper=A.GtOp,right,pos}) = (check_int(trexp left, pos); check_int(trexp right, pos); {exp=R.opExp(oper,left,right), ty=T.INT})
-				| trexp (A.OpExp{left,oper=A.LeOp,right,pos}) = (check_int(trexp left, pos); check_int(trexp right, pos); {exp=R.opExp(oper,left,right), ty=T.INT})
-				| trexp (A.OpExp{left,oper=A.GeOp,right,pos}) = (check_int(trexp left, pos); check_int(trexp right, pos); {exp=R.opExp(oper,left,right), ty=T.INT})
+        | trexp (A.OpExp{left,oper=A.PlusOp,right,pos}) = (check_int(trexp left, pos); check_int(trexp right, pos); {exp=R.opExp(A.PlusOp,left,right), ty=T.INT})
+				| trexp (A.OpExp{left,oper=A.MinusOp,right,pos}) = (check_int(trexp left, pos); check_int(trexp right, pos); {exp=R.opExp(A.MinusOp,left,right), ty=T.INT})
+				| trexp (A.OpExp{left,oper=A.TimesOp,right,pos}) = (check_int(trexp left, pos); check_int(trexp right, pos); {exp=R.opExp(A.TimesOp,left,right), ty=T.INT})
+				| trexp (A.OpExp{left,oper=A.DivideOp,right,pos}) = (check_int(trexp left, pos); check_int(trexp right, pos); {exp=R.opExp(A.DivideOp,left,right), ty=T.INT})
+				| trexp (A.OpExp{left,oper=A.EqOp,right,pos}) = check_comparision (A.EqOp, left, right, pos)
+				| trexp (A.OpExp{left,oper=A.NeqOp,right,pos}) = check_comparision (A.NeqOp, left, right, pos)
+				| trexp (A.OpExp{left,oper=A.LtOp,right,pos}) = (check_int(trexp left, pos); check_int(trexp right, pos); {exp=R.opExp(A.LtOp,left,right), ty=T.INT})
+				| trexp (A.OpExp{left,oper=A.GtOp,right,pos}) = (check_int(trexp left, pos); check_int(trexp right, pos); {exp=R.opExp(A.GtOp,left,right), ty=T.INT})
+				| trexp (A.OpExp{left,oper=A.LeOp,right,pos}) = (check_int(trexp left, pos); check_int(trexp right, pos); {exp=R.opExp(A.LeOp,left,right), ty=T.INT})
+				| trexp (A.OpExp{left,oper=A.GeOp,right,pos}) = (check_int(trexp left, pos); check_int(trexp right, pos); {exp=R.opExp(A.GeOp,left,right), ty=T.INT})
         | trexp (A.RecordExp{fields,typ,pos}) = check_record (fields,typ,pos)
         | trexp (A.SeqExp(expseq)) = check_sequence (expseq)
         | trexp (A.AssignExp{var,exp,pos}) = check_assign (var,exp,pos)
@@ -110,7 +110,7 @@ struct
                 SOME t => {name=name,ty=t}
                 | _  => (ErrorMsg.error pos ("undefined type: " ^ S.name(typ)); {name=name,ty=T.BOTTOM})
             val params' = map transparam params
-            val access = Tree.allocLocal level false
+            val access = R.allocLocal level false
             fun enterparam ({name,ty},venv) = S.enter(venv,name, E.VarEntry{access=access,ty=ty})
             val venv'' = foldl enterparam venv params'
             val (rt,lvl) = case S.look(venv,name) of
@@ -148,7 +148,7 @@ struct
       and create_var (venv,tenv,name,escape,typ,init,pos) =
         let
           val  {exp=_,ty=ty} = trexp init
-          val access = Tree.allocLocal level false
+          val access = R.allocLocal level false
         in
           ((case typ of
               SOME (sym,p) => if types_equal (actual_ty ((get_type (tenv,sym,p)),p),actual_ty (ty,pos)) then () else ErrorMsg.error pos ("declared type " ^ (T.name (get_type (tenv,sym,p))) ^ " and expression " ^ (T.name ty) ^" do not match")
@@ -291,7 +291,7 @@ struct
       and check_for (var,exp1,exp2,exp3,pos) =
         let
           val break_label = Temp.newlabel()
-          val access = Tree.allocLocal level false
+          val access = R.allocLocal level false
         in
           (depth := !depth + 1;
           check_int (trexp exp1,pos);
