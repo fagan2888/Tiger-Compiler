@@ -205,11 +205,11 @@ struct
 	fun arrayExp (exp1, exp2) =
 		let
 				val r = Temp.newtemp();
-				val size = unEx(exp1);
-				fun arrSeq size = T.SEQ(T.MOVE(T.MEM(T.BINOP(T.PLUS,T.TEMP(r),T.CONST(Frame.wordsize*size))),unEx(exp2)),arrSeq(size-1))
-					| arrSeq 1 = T.MOVE(T.MEM(T.BINOP(T.PLUS,T.TEMP(r),T.CONST(Frame.wordsize))),unEx(exp2))
+				val size = exp1;
+				fun arrSeq 0 = []
+					| arrSeq size = (T.MOVE(T.MEM(T.BINOP(T.PLUS,T.TEMP(r),T.CONST(Frame.wordsize*size))),unEx(exp2)))::arrSeq(size-1)
 		in
-				Ex(T.ESEQ(T.SEQ(T.MOVE(T.TEMP(r),T.CALL(T.NAME(Temp.newlabel()),T.CONST(Frame.wordsize*size))),arrSeq(size)),T.TEMP(r)))
+				Ex(T.ESEQ(T.SEQ(T.MOVE(T.TEMP(r),T.CALL(T.NAME(Temp.newlabel()),[T.CONST(Frame.wordsize*size)]))::arrSeq(size)),T.TEMP(r)))
 		end
 
 
