@@ -70,7 +70,7 @@ struct
 
   fun allocLocal lvl bl = case lvl of
     LEVEL({frame=f, parent=p, unique=u}) => (lvl, Frame.allocLocal f bl)
-    | outermost => (outermost, (Frame.allocLocal (Frame.newFrame {name=Temp.newlabel(), formals=[]}) bl)) (* TODO: can't do this *)
+    | outermost => (ErrorMsg.error 0 ("allocLocal on outermost level"); (outermost, (Frame.allocLocal (Frame.newFrame {name=Temp.newlabel(), formals=[]}) bl)))
 
   val frags = ref [] : frag list ref
 
@@ -92,7 +92,7 @@ struct
     | unCx(Ex(T.CONST 0)) = (fn (t,f) => T.JUMP(T.NAME f, [f]))
     | unCx(Ex(T.CONST _)) = (fn (t,f) => T.JUMP(T.NAME t, [t]))
     | unCx(Ex e) = (fn (t,f) => T.CJUMP(T.EQ, e, T.CONST 1, t, f))
-    | unCx(Nx n) = (fn(t,f) => T.LABEL(Temp.newlabel())) (* TODO: can't uncx an nx *)
+    | unCx(Nx n) = (ErrorMsg.error 0 ("uncx an nx"); fn(t,f) => T.LABEL(Temp.newlabel()))
 
   fun unNx (Ex e) = T.EXP(e)
 		| unNx (Cx c) = unNx (Ex (unEx (Cx c)))
@@ -112,8 +112,8 @@ struct
 
   fun simpleVar ((lvl1, frm), lvl2) =
     let
-      fun find_link (TOP,_) = T.TEMP(Frame.FP) (* TODO: error, variable cannot be on top level *)
-        | find_link (_,TOP) = T.TEMP(Frame.FP) (* TODO: error, variable cannot be on top level *)
+      fun find_link (TOP,_) = (ErrorMsg.error 0 ("var on outermost level"); T.TEMP(Frame.FP))
+        | find_link (_,TOP) = (ErrorMsg.error 0 ("var on outermost level"); T.TEMP(Frame.FP))
         | find_link (lvl1 as LEVEL({frame=f1, parent=p1, unique=u1}),LEVEL({frame=f2, parent=p2, unique=u2})) = if u1=u2 then T.TEMP(Frame.FP) else T.MEM(find_link(lvl1, p2))
     in
       Ex (Frame.exp frm (find_link(lvl1, lvl2)))
@@ -162,7 +162,7 @@ struct
       Ex(T.ESEQ(T.SEQ(rec_seq),T.TEMP(r)))
     end
 
-  fun seqExp [] = Ex (T.CONST 0) (* TODO: can't do this, empty expression seq*)
+  fun seqExp [] = Ex (T.CONST 0)
     | seqExp [exp] = exp
     | seqExp (exps) = Ex(T.ESEQ(T.SEQ(map unNx (List.take(exps,List.length(exps)-1))), unEx (List.last(exps))))
 
@@ -188,7 +188,7 @@ struct
         (Cx c2, Cx c3) => Cx(fn(tt,ff) => (T.SEQ[(unCx exp1)(t, f),T.LABEL t,c2 (tt, ff),T.LABEL f,c3 (tt, ff)]))
         | (Nx n2, Nx n3) => Nx(T.SEQ[(unCx exp1)(t,f),T.LABEL t,n2,T.JUMP(T.NAME j, [j]),T.LABEL f,n3,T.LABEL j])
         | (Ex e2, Ex e3) => Ex(T.ESEQ(T.SEQ[(unCx exp1)(t,f),T.LABEL t,T.MOVE(T.TEMP r,e2),T.JUMP(T.NAME j,[j]),T.LABEL f,T.MOVE(T.TEMP r,e3),T.LABEL j], T.TEMP(r)))
-        | (_,_) => Ex (T.CONST (0)) (* TODO: can't do this, then and else differ *)
+        | (_,_) => Ex (T.CONST (0)) (* then and else differ *)
     end
 
   fun whileExp (break,cond,body) =

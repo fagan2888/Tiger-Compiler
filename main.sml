@@ -9,7 +9,7 @@ struct
           | MipsFrame.STRING(label,string) => (print (string ^ "\n"); print_frags frags))
       val _ = Translate.resetFrags()
       val ast = Parse.parse filename
-      val frags = Semant.transProg(ast) (* TODO: call exp with more than 4*)
+      val frags = Semant.transProg(ast)
       val _ = print_frags frags
     in
       ()
