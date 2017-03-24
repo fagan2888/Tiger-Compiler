@@ -51,9 +51,9 @@ struct
                | Cx of Temp.label * Temp.label -> T.stm
 
   val outermost = TOP
-											
+
   fun newLevel ({parent=p,name=n,formals=f}) = LEVEL({parent=p, frame=Frame.newFrame{name=n, formals=true::f}, unique=ref ()})
-																										
+
   fun formals (TOP) = []
     | formals (LEVEL({frame=f, parent=p, unique=u})) =
       let
@@ -218,6 +218,6 @@ struct
 				val size = unEx(exp1);
 				val init = unEx(exp2);
 			in
-				Ex(T.ESEQ(T.SEQ([T.MOVE(T.TEMP(r),Frame.externalCall("initArray",[size,init]))]),T.TEMP(r)))
+				Ex(T.ESEQ(T.SEQ([T.MOVE(T.TEMP(r),Frame.externalCall("tiger_init_array",[size,init]))]),T.TEMP(r)))
 		end
 end

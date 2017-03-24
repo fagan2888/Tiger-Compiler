@@ -244,8 +244,9 @@ struct
             in
               if types_equal(actual_ty (ty,pos),actual_ty (typ,pos)) then true else (ErrorMsg.error pos ("record field type does not match expression"); false) (* IMPROVE: error message *)
             end
+          and map_fields (sym,exp,pos) = #exp (trexp exp)
         in
-          if compare_field_types (fields, types) then {exp=(R.nilExp()) (*TODO*), ty=return_ty} else {exp=R.nilExp(), ty=T.BOTTOM}
+          if compare_field_types (fields, types) then {exp=(R.recordExp(map map_fields fields)), ty=return_ty} else {exp=R.nilExp(), ty=T.BOTTOM}
         end
 
       and check_sequence (expseq) =
