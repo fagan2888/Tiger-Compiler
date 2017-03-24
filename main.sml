@@ -11,7 +11,7 @@ struct
       val ast = Parse.parse filename
 			val _ = FindEscape.findEscape ast
       val frags = Semant.transProg(ast)
-      val _ = print_frags frags
+      val _ = if (!ErrorMsg.anyErrors) then () else (print_frags frags)
     in
       ()
     end
