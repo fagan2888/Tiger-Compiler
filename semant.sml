@@ -171,16 +171,15 @@ struct
 
       and check_field_var (var,id,pos) =
         let
-          val {exp=_,ty=ty} = trvar var
+          val {exp=exp,ty=ty} = trvar var
+          fun fields_contain_sym (pos,[],sym,_) = (ErrorMsg.error pos ("undefined record field : " ^ S.name(sym)); {exp=R.nilExp(), ty=T.BOTTOM})
+            | fields_contain_sym (pos,(id,ty)::fieldlist,sym,num) = if sym=id then {exp=(R.fieldVar(exp,num)), ty=ty} else fields_contain_sym (pos,fieldlist,sym,num+1)
         in
           (case actual_ty (ty,pos) of
-              T.RECORD(fieldlist,_) => fields_contain_sym (pos,fieldlist,id)
+              T.RECORD(fieldlist,_) => fields_contain_sym (pos,fieldlist,id,1)
             | T.BOTTOM => {exp=R.nilExp(), ty=T.BOTTOM}
             | _ => (ErrorMsg.error pos ("variable not a record"); {exp=R.nilExp(), ty=T.BOTTOM})) (* IMPROVE: error message *)
         end
-
-      and fields_contain_sym (pos,[],sym) = (ErrorMsg.error pos ("undefined record field : " ^ S.name(sym)); {exp=R.nilExp(), ty=T.BOTTOM})
-        | fields_contain_sym (pos,(id,ty)::fieldlist,sym) = if sym=id then {exp=(R.nilExp())(*TODO*), ty=ty} else fields_contain_sym (pos,fieldlist,sym)
 
       and check_subscript_var (var,exp,pos) =
         let

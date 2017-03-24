@@ -16,7 +16,7 @@ sig
 
   val simpleVar: access * level -> exp
   val subscriptVar : exp * exp -> exp
-	val fieldVar : exp * exp -> exp
+	val fieldVar : exp * int -> exp
 
   val nilExp: unit -> exp
   val intExp: int -> exp
@@ -86,7 +86,7 @@ struct
     | unCx(Ex(T.CONST 0)) = (fn (t,f) => T.JUMP(T.NAME f, [f]))
     | unCx(Ex(T.CONST _)) = (fn (t,f) => T.JUMP(T.NAME t, [t]))
     | unCx(Ex e) = (fn (t,f) => T.CJUMP(T.EQ, e, T.CONST 1, t, f))
-    | unCx(Nx n) = (fn(t,f) => T.LABEL(Temp.newlabel())) (* TODO: Can't unCx an Nx *)
+    | unCx(Nx n) = (fn(t,f) => T.LABEL(Temp.newlabel())) (* TODO: can't uncx an nx *)
 
   fun unNx (Ex e) = T.EXP(e)
 		| unNx (Cx c) = unNx (Ex (unEx (Cx c)))
@@ -121,7 +121,7 @@ struct
 				Ex(T.MEM(T.BINOP(T.PLUS,T.MEM(var),T.BINOP(T.MUL,ind,T.CONST(Frame.wordsize)))))
 		end
 
-	fun fieldVar (v,id) = Ex(T.MEM(T.BINOP(T.PLUS,T.MEM(v),T.MEM(id))))
+	fun fieldVar (v,num) = Ex(T.MEM(T.BINOP(T.PLUS,T.MEM(unEx v),T.CONST(num*Frame.wordsize))))
 
   fun nilExp () = Ex (T.CONST (0))
   fun intExp (num) = Ex (T.CONST (num))
