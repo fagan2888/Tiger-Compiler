@@ -18,6 +18,7 @@ mipsframe.sml
 translate.sml
 printtree.sml
 tree.sml
+findescape.sml
 main.sml
 $/smlnj-lib.cm
 $/ml-yacc-lib.cm
