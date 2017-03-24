@@ -315,7 +315,6 @@ struct
           val _ = depth := 0
           val {venv=new_venv,tenv=new_tenv,expseq=decs_expseq} = transDecs (venv,tenv,decs,[])
           val expty = transExp (new_venv,new_tenv,break,level) expseq
-          (* TODO MATT: get the sequence for the decs, duplicate expseq code to get sequence for body, concatinate arrays, return R.seqExp(decs@body)*)
           val _ = depth := !curr_depth
         in
           {exp=R.seqExp(decs_expseq @ [#exp expty]), ty=(#ty expty)}
