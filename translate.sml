@@ -5,12 +5,14 @@ sig
   type level
   type access
   type exp
+  type frag
   val outermost: level
   val newLevel: {parent: level, name: Temp.label, formals: bool list} -> level
   val formals: level -> access list
   val allocLocal: level -> bool -> access
 
-  val frags: Frame.frag list ref
+  val frags: frag list ref
+  val resetFrags : unit -> unit
   val procEntryExit: {level: level, body: exp} -> unit
   val getResult: unit -> Frame.frag list
 
@@ -46,6 +48,8 @@ struct
 
   type access = level * Frame.access
 
+  type frag = Frame.frag
+
   datatype exp = Ex of T.exp
                | Nx of T.stm
                | Cx of Temp.label * Temp.label -> T.stm
@@ -68,7 +72,9 @@ struct
     LEVEL({frame=f, parent=p, unique=u}) => (lvl, Frame.allocLocal f bl)
     | outermost => (outermost, (Frame.allocLocal (Frame.newFrame {name=Temp.newlabel(), formals=[]}) bl)) (* TODO: can't do this *)
 
-  val frags = ref [] : Frame.frag list ref
+  val frags = ref [] : frag list ref
+
+  fun resetFrags () = (frags := [])
 
   fun getResult () = !frags
 

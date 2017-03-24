@@ -1,6 +1,6 @@
 signature SEMANT =
 sig
-  val transProg : Absyn.exp -> unit
+  val transProg : Absyn.exp -> Translate.frag list
 end
 
 structure Semant : SEMANT =
@@ -373,10 +373,9 @@ struct
     let
       val level = R.newLevel{parent=R.outermost,name=Temp.newlabel(),formals=[]}
       val expty = (transExp (E.base_venv, E.base_tenv, Temp.newlabel(), level) exp)
-      val tree = R.unNx (#exp expty)
-      val _ = Printtree.printtree (TextIO.stdOut,tree)
+      val _ = R.procEntryExit {level=level, body=(#exp expty)}
     in
-      R.procEntryExit {level=level, body=(#exp expty)}
+      R.getResult()
     end
 
 end
