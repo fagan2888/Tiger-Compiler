@@ -1,9 +1,9 @@
-signature TREE = 
-sig 
+signature TREE =
+sig
   type label = Temp.label
   type size
 
-datatype stm = SEQ of stm * stm
+datatype stm = SEQ of stm list
              | LABEL of label
              | JUMP of exp * label list
              | CJUMP of relop * exp * exp * label * label
@@ -18,22 +18,22 @@ datatype stm = SEQ of stm * stm
              | CONST of int
 	     | CALL of exp * exp list
 
-      and binop = PLUS | MINUS | MUL | DIV 
+      and binop = PLUS | MINUS | MUL | DIV
                 | AND | OR | LSHIFT | RSHIFT | ARSHIFT | XOR
 
-      and relop = EQ | NE | LT | GT | LE | GE 
+      and relop = EQ | NE | LT | GT | LE | GE
 	        | ULT | ULE | UGT | UGE
 
   val notRel : relop -> relop
   val commute: relop -> relop
 end
 
-structure Tree : TREE = 
+structure Tree : TREE =
 struct
   type label=Temp.label
   type size = int
 
-datatype stm = SEQ of stm * stm
+datatype stm = SEQ of stm list
              | LABEL of label
              | JUMP of exp * label list
              | CJUMP of relop * exp * exp * label * label
@@ -48,11 +48,15 @@ datatype stm = SEQ of stm * stm
              | CONST of int
 	     | CALL of exp * exp list
 
-      and binop = PLUS | MINUS | MUL | DIV 
+      and binop = PLUS | MINUS | MUL | DIV
                 | AND | OR | LSHIFT | RSHIFT | ARSHIFT | XOR
 
-      and relop = EQ | NE | LT | GT | LE | GE 
+      and relop = EQ | NE | LT | GT | LE | GE
 	        | ULT | ULE | UGT | UGE
 
-end
+      fun notRel x = case x of EQ => NE | NE => EQ | LT => GE | GT => LE
+        | LE => GT | GE => LT | ULT => UGE | ULE => UGT | UGT => ULE | UGE => ULT
 
+      fun commute x = case x of EQ => EQ | NE => NE | _ => notRel x
+
+end
