@@ -46,23 +46,23 @@ struct
         | trexp (A.LetExp{decs=decs,body=expseq,pos=pos}) = check_let (decs,expseq,pos)
         | trexp (A.ArrayExp{typ=typ,size=exp1,init=exp2,pos=pos}) = check_array (typ,exp1,exp2,pos)
 
-      and transDecs (venv,tenv,[]) = {venv=venv,tenv=tenv}
-        | transDecs (venv,tenv,dec::decs) =
+      and transDecs (venv,tenv,[],expseq) = {venv=venv,tenv=tenv,expseq=expseq}
+        | transDecs (venv,tenv,dec::decs,expseq) =
           let
-            val {venv=new_venv,tenv=new_tenv} = transDec (venv,tenv,dec)
+            val {venv=new_venv,tenv=new_tenv,expseq=new_expseq} = transDec (venv,tenv,dec,expseq)
           in
-            transDecs (new_venv,new_tenv,decs)
+            transDecs (new_venv,new_tenv,decs,new_expseq)
           end
 
-      and transDec (venv,tenv,A.TypeDec(tydecs)) =
+      and transDec (venv,tenv,A.TypeDec(tydecs),expseq) =
           let
             val tenv' = (recursive_type_body ((recursive_type_dec (tenv,[],tydecs)),tydecs))
             val _ = check_cycles (tenv', tydecs)
           in
-            {venv=venv,tenv=tenv'}
+            {venv=venv,tenv=tenv',expseq=expseq}
           end
-        | transDec (venv,tenv,A.VarDec{name,escape,typ,init,pos}) = {venv=create_var(venv,tenv,name,escape,typ,init,pos),tenv=tenv}
-        | transDec (venv,tenv,A.FunctionDec(fundecs)) = {venv=(recursive_func_body ((recursive_func_dec (venv,tenv,[],fundecs)),tenv,fundecs)),tenv=tenv}
+        | transDec (venv,tenv,A.VarDec{name,escape,typ,init,pos},expseq) = create_var(venv,tenv,name,escape,typ,init,pos,expseq)
+        | transDec (venv,tenv,A.FunctionDec(fundecs),expseq) = {venv=(recursive_func_body ((recursive_func_dec (venv,tenv,[],fundecs)),tenv,fundecs)),tenv=tenv,expseq=expseq}
 
       and recursive_type_dec (tenv,list,[]) = tenv
         | recursive_type_dec (tenv,list,({name,ty,pos}::tydecs)) = (type_declared (name,list,pos); S.enter(recursive_type_dec(tenv,name::list,tydecs),name,T.NAME(name, ref NONE)))
@@ -145,15 +145,16 @@ struct
           SOME ty => actual_ty (ty,pos)
         | _ => (ErrorMsg.error pos ("undefined type: " ^ S.name(typ)); T.BOTTOM))
 
-      and create_var (venv,tenv,name,escape,typ,init,pos) =
+      and create_var (venv,tenv,name,escape,typ,init,pos,expseq) =
         let
-          val  {exp=_,ty=ty} = trexp init
-          val access = R.allocLocal level false
+          val  {exp=exp,ty=ty} = transExp (venv,tenv,break,level) init
+          val access = R.allocLocal level (!escape)
+          val new_expseq = (R.assignExp(R.simpleVar(access, level),exp))::expseq
         in
           ((case typ of
               SOME (sym,p) => if types_equal (actual_ty ((get_type (tenv,sym,p)),p),actual_ty (ty,pos)) then () else ErrorMsg.error pos ("declared type " ^ (T.name (get_type (tenv,sym,p))) ^ " and expression " ^ (T.name ty) ^" do not match")
             | NONE => (if ty=T.NIL then ErrorMsg.error pos ("initializing nil expressions not constrained by record type") else () ));
-          S.enter(venv,name,E.VarEntry{access=access,ty=ty}))
+          {venv=S.enter(venv,name,E.VarEntry{access=access,ty=ty}),tenv=tenv,expseq=new_expseq})
         end
 
       and get_type (tenv,sym,pos) = (case S.look(tenv,sym) of
@@ -312,10 +313,12 @@ struct
         let
           val curr_depth = depth
           val _ = depth := 0
-          val {venv=new_venv,tenv=new_tenv} = transDecs (venv,tenv,decs)
+          val {venv=new_venv,tenv=new_tenv,expseq=decs_expseq} = transDecs (venv,tenv,decs,[])
+          val expty = transExp (new_venv,new_tenv,break,level) expseq
+          (* TODO MATT: get the sequence for the decs, duplicate expseq code to get sequence for body, concatinate arrays, return R.seqExp(decs@body)*)
           val _ = depth := !curr_depth
         in
-          transExp (new_venv,new_tenv,break,level) expseq
+          {exp=R.seqExp(decs_expseq @ [#exp expty]), ty=(#ty expty)}
         end
 
       and check_array (typ,exp1,exp2,pos) = (case S.look(tenv, typ) of
