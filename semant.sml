@@ -296,13 +296,14 @@ struct
           val break_label = Temp.newlabel()
           val access = R.allocLocal level false
           val i = R.simpleVar(access, level)
+          val expty = transExp(S.enter(venv,var,E.VarEntry{access=access,ty=T.INT}),tenv,break_label,level) exp3
         in
           (depth := !depth + 1;
           check_int (trexp exp1,pos);
           check_int (trexp exp2,pos);
-          check_unit (transExp(S.enter(venv,var,E.VarEntry{access=access,ty=T.INT}),tenv,break_label,level) exp3,pos);
+          check_unit (expty,pos);
           depth := !depth - 1;
-          {exp=R.forExp(break_label,i,#exp (trexp exp1),#exp (trexp exp2),#exp (trexp exp3)), ty=T.UNIT})
+          {exp=R.forExp(break_label,i,#exp (trexp exp1),#exp (trexp exp2),#exp expty), ty=T.UNIT})
         end
 
       and check_break (pos) =

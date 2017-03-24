@@ -123,6 +123,7 @@ struct
 		let
 				val var = unEx v;
 				val ind = unEx exp;
+        (* TODO: check bounds *)
 		in
 				Ex(T.MEM(T.BINOP(T.PLUS,T.MEM(var),T.BINOP(T.MUL,ind,T.CONST(Frame.wordsize)))))
 		end
@@ -133,10 +134,13 @@ struct
   fun intExp (num) = Ex (T.CONST (num))
   fun stringExp (str) =
     let
-      val label = Temp.newlabel()
-      val _ = (frags := Frame.STRING(label, str)::(!frags))
+      val new_label = Temp.newlabel()
+      fun search_frags [] = ((frags := Frame.STRING(new_label, str)::(!frags)); Ex (T.NAME new_label))
+        | search_frags (frag::frags) = (case frag of
+          Frame.STRING(label,string) => if str=string then Ex (T.NAME label) else (search_frags frags)
+          | _ => search_frags frags)
     in
-      Ex (T.NAME label)
+      search_frags (!frags)
     end
 
   fun callExp (label, exps) = Ex(T.CALL(T.NAME(label), map unEx exps))
