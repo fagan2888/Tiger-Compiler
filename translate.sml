@@ -113,7 +113,13 @@ struct
       Ex (Frame.exp frm (find_link(lvl1, lvl2)))
     end
 
-	fun subscriptVar (v,exp) = Ex(T.MEM(T.BINOP(T.PLUS,T.MEM(v),T.CONST(exp*Frame.wordsize))))
+	fun subscriptVar (v,exp) =
+		let
+				val var = unEx v;
+				val ind = unEx exp;
+		in
+				Ex(T.MEM(T.BINOP(T.PLUS,T.MEM(var),T.BINOP(T.MUL,ind,T.CONST(Frame.wordsize)))))
+		end
 
 	fun fieldVar (v,id) = Ex(T.MEM(T.BINOP(T.PLUS,T.MEM(v),T.MEM(id))))
 
@@ -209,12 +215,9 @@ struct
 	fun arrayExp (exp1, exp2) =
 		let
 				val r = Temp.newtemp();
-				val size = exp1;
-				fun arrSeq 0 = []
-					| arrSeq size = (T.MOVE(T.MEM(T.BINOP(T.PLUS,T.TEMP(r),T.CONST(Frame.wordsize*size))),unEx(exp2)))::arrSeq(size-1)
-		in
-				Ex(T.ESEQ(T.SEQ(T.MOVE(T.TEMP(r),T.CALL(T.NAME(Temp.newlabel()),[T.CONST(Frame.wordsize*size)]))::arrSeq(size)),T.TEMP(r)))
+				val size = unEx(exp1);
+				val init = unEx(exp2);
+			in
+				Ex(T.ESEQ(T.SEQ([T.MOVE(T.TEMP(r),Frame.externalCall("initArray",[size,init]))]),T.TEMP(r)))
 		end
-
-
 end

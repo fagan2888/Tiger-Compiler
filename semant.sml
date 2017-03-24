@@ -188,7 +188,7 @@ struct
           val {exp=_,ty=ty} = trvar var
         in
           (case actual_ty (ty,pos) of
-              T.ARRAY(ty,_) => {exp=R.nilExp() (*TODO*), ty=ty}
+              T.ARRAY(ty,_) => {exp=R.subscriptVar(#exp(trvar var),#exp(trexp exp)), ty=ty}
             | T.BOTTOM => {exp=R.nilExp(), ty=T.BOTTOM}
             | _ => (ErrorMsg.error pos ("variable not an array"); {exp=R.nilExp(), ty=T.BOTTOM})) (* IMPROVE: error message *)
         end
@@ -333,7 +333,7 @@ struct
           val return_ty = if types_equal (actual_ty (typ,pos),actual_ty (ty,pos)) then t else (ErrorMsg.error pos ("array initialization does not match type"); T.BOTTOM)
         in
           (check_int (trexp exp1,pos);
-           {exp=R.nilExp() (*TODO*), ty=return_ty})
+           {exp=R.arrayExp(#exp(trexp exp1),#exp(trexp exp2)), ty=return_ty})
         end
 
       and check_cycles (tenv, []) = ()
