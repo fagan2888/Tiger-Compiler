@@ -1,6 +1,6 @@
 signature FINDESCAPE =
 sig
-  val findEscape : Absyn.exp -> unit
+  val prog : Absyn.exp -> unit
 end
 
 structure FindEscape : FINDESCAPE =
@@ -50,7 +50,7 @@ structure S = Symbol
 			in
 					trexp(s)
 			end
-										
+
   and traverseDecs (env, d, s : Absyn.dec list) : escEnv =
 		let
 				fun trdec (A.TypeDec(tydecs)) = env
@@ -80,6 +80,6 @@ structure S = Symbol
 				foldl foldDec env s
 		end
 
-  fun findEscape (prog : Absyn.exp) : unit = traverseExp(S.empty,0,prog)
+  fun prog (exp : Absyn.exp) : unit = traverseExp(S.empty,0,exp)
 
 end

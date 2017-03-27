@@ -50,7 +50,26 @@ fun exp acc exp = case acc of
 fun externalCall (s,args) =
 	Tree.CALL(Tree.NAME(Temp.namedlabel(s)), args)
 
-fun procEntryExit1 (frame,body) = body
+type register = string
+
+val tempMap = Temp.Map.empty (* TODO *)
+
+fun tempString temp = Temp.makestring temp (* TODO *)
+
+fun makeRegs 0 = []
+	| makeRegs n = Temp.newtemp()::(makeRegs (n-1))
+
+val specialregs = makeRegs 5 (* $rv,$fp,$sp,$ra,$0 *)
+val argregs = makeRegs 4 (* $a0-$a3 *)
+val calleesaves = makeRegs 8 (* $s0-$s7 *)
+val callersaves = makeRegs 10 (* $t0-$t9 *)
+
+fun procEntryExit1 (frame,body) = body (* TODO *)
+
+fun procEntryExit2 (frame,body) = body @ [Assem.OPER{assem="", src=specialregs @ calleesaves, dst=[],jump=SOME[]}]
+
+fun procEntryExit3 ({name=name, formals=formals, locals=locals}:frame, body : Assem.instr list) =
+		{prolog = "PROCEDURE " ^ Symbol.name name ^ "\n", body = body, epilog = "END " ^ Symbol.name name ^ "\n"}
 
 datatype frag = PROC of {body: Tree.stm, frame: frame}
                 | STRING of Temp.label * string

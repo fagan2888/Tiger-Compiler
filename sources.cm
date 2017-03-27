@@ -19,6 +19,11 @@ translate.sml
 printtree.sml
 tree.sml
 findescape.sml
+canon.sml
+assem.sml
+funcgraph.sig
+funcgraph.sml
+codegen.sml
 main.sml
 $/smlnj-lib.cm
 $/ml-yacc-lib.cm
