@@ -23,7 +23,7 @@ canon.sml
 assem.sml
 funcgraph.sig
 funcgraph.sml
-codegen.sml
+mipsgen.sml
 main.sml
 $/smlnj-lib.cm
 $/ml-yacc-lib.cm

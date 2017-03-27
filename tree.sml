@@ -26,6 +26,7 @@ datatype stm = SEQ of stm list
 
   val notRel : relop -> relop
   val commute: relop -> relop
+  val relString: relop -> string
 end
 
 structure Tree : TREE =
@@ -58,5 +59,8 @@ datatype stm = SEQ of stm list
         | LE => GT | GE => LT | ULT => UGE | ULE => UGT | UGT => ULE | UGE => ULT
 
       fun commute x = case x of EQ => EQ | NE => NE | _ => notRel x
+
+      fun relString x = case x of EQ => "beq" | NE => "bne" | LT => "blt" | GT => "bgt"
+        | LE => "ble" | GE => "bge" | _ => "?!?"
 
 end
