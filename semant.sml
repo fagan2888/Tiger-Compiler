@@ -82,7 +82,7 @@ struct
           let
             val result_ty = (case result of
               SOME (rt, pos') => (case S.look(tenv,rt) of SOME ty => ty | NONE => (ErrorMsg.error pos ("type does not exists: " ^ S.name(rt)); T.BOTTOM))
-              | NONE => T.BOTTOM)
+              | NONE => T.UNIT)
             fun transparam {name,escape,typ,pos} =
               case S.look(tenv,typ) of
                 SOME t => {name=name,escape=escape,ty=t}
