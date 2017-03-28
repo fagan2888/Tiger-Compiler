@@ -52,19 +52,36 @@ fun externalCall (s,args) =
 
 type register = string
 
-val tempMap = Temp.Map.empty (* TODO *)
+val tempMap = Temp.Map.empty
 
-fun tempString temp = Temp.makestring temp (* TODO *)
+fun tempString temp =
+	case Temp.Map.find(tempMap,temp) of
+			SOME(register) => register
+		| NONE => Temp.makestring temp
+															
+fun makeRegs (0,[]) = []
+	| makeRegs (n,(name::names)) =
+		let
+				val r = Temp.newtemp();
+		in
+				Temp.Map.insert(tempMap,r,name);
+				r::(makeRegs(n-1, names))
+		end
+	| makeRegs (n,[]) =
+		let
+				val r = Temp.newtemp();
+		in
+				Temp.Map.insert(tempMap,r,NONE);
+				r::(makeRegs(n-1,[]))
+		end
 
-fun makeRegs 0 = []
-	| makeRegs n = Temp.newtemp()::(makeRegs (n-1))
 
-val specialregs = makeRegs 5 (* $rv,$fp,$sp,$ra,$0 *)
-val argregs = makeRegs 4 (* $a0-$a3 *)
-val calleesaves = makeRegs 8 (* $s0-$s7 *)
-val callersaves = makeRegs 10 (* $t0-$t9 *)
+val specialregs = makeRegs(5,["rv":register,"fp":register,"sp":register,"ra":register,"r0":register]) (* $rv,$fp,$sp,$ra,$0 *)
+val argregs = makeRegs(4,[]) (* $a0-$a3 *)
+val calleesaves = makeRegs(8,[]) (* $s0-$s7 *)
+val callersaves = makeRegs (10,[]) (* $t0-$t9 *)
 
-fun procEntryExit1 (frame,body) = body (* TODO *)
+fun procEntryExit1 (frame,body) = body 
 
 fun procEntryExit2 (frame,body) = body @ [Assem.OPER{assem="", src=specialregs @ calleesaves, dst=[],jump=SOME[]}]
 
