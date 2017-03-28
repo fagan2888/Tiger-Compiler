@@ -17,8 +17,6 @@ struct
 
   val depth = ref 0
 
-  (* TODO: polymorphic type inference *)
-
   fun transExp (venv, tenv, break, level) =
     let
       fun trexp (A.VarExp(var)) = trvar var
