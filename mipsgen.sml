@@ -35,7 +35,7 @@ struct
 
       and munchExp (T.MEM(T.BINOP(T.PLUS, e1, T.CONST i))) = result(fn r => emit(A.OPER{assem="lw $d0, " ^ (Int.toString i) ^ "($s0)\n", src=[munchExp e1], dst=[r], jump=NONE}))
         | munchExp (T.MEM(T.BINOP(T.PLUS, T.CONST i, e1))) = result(fn r => emit(A.OPER{assem="lw $d0, " ^ (Int.toString i) ^ "($s0)\n", src=[munchExp e1], dst=[r], jump=NONE}))
-        | munchExp (T.MEM(e1)) = result(fn r => emit(A.OPER{assem="lw $d0, 0($s0)", src=[munchExp e1], dst=[r], jump=NONE}))
+        | munchExp (T.MEM(e1)) = result(fn r => emit(A.OPER{assem="lw $d0, 0($s0)\n", src=[munchExp e1], dst=[r], jump=NONE}))
         | munchExp (T.BINOP(T.PLUS, e1, T.CONST i)) = result(fn r => emit(A.OPER{assem="addi $d0, $s0, " ^ (Int.toString i) ^ "\n", src=[munchExp e1], dst=[r], jump=NONE}))
         | munchExp (T.BINOP(T.PLUS, T.CONST i, e1)) = result(fn r => emit(A.OPER{assem="addi $d0, $s0, " ^ (Int.toString i) ^ "\n", src=[munchExp e1], dst=[r], jump=NONE}))
         | munchExp (T.CONST i) = result(fn r => emit(A.OPER{assem="addi $d0, $0, " ^ (Int.toString i) ^ "\n", src=[], dst=[r], jump=NONE}))
@@ -56,7 +56,16 @@ struct
 
         (* TODO: page 203-205*)
       and munchArgs (n, []) = []
-        | munchArgs (n, (arg::args)) = []
+        | munchArgs (n, (arg::args)) =
+          let
+            val argDst = if (n<4) then List.nth(F.argregs,n) else Temp.newtemp()
+            val _ = if (n<4)
+                    then emit(A.MOVE{assem="mv $a" ^ Int.toString n ^ ", 0($s0)\n", src=(munchExp arg), dst=argDst})
+                    else emit(A.OPER{assem="sw $s1, " ^ Int.toString (4*(n-4)) ^ "($s0)\n", src=[munchExp (T.TEMP(List.nth(F.specialregs,2))), munchExp arg], dst=[], jump=NONE})
+          in
+            argDst::munchArgs(n+1,args)
+          end
+
     in
       munchStm stm;
       rev(!ilist)
