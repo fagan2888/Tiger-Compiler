@@ -54,7 +54,6 @@ struct
         | munchExp (T.CALL(e,elist)) = result(fn r => emit(A.OPER{assem="", src=[], dst=[], jump=NONE}))
         | munchExp (T.TEMP t) = t
 
-        (* TODO: page 203-205*)
       and munchArgs (n, []) = []
         | munchArgs (n, (arg::args)) =
           let
