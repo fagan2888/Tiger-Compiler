@@ -2,6 +2,7 @@ structure Main =
 struct
   structure Tr = Translate
   structure F = MipsFrame
+	structure S = Symbol
 
   fun emitproc out (F.PROC{body,frame}) =
     let
@@ -15,7 +16,7 @@ struct
     in
       app (fn i => TextIO.output(out,format0 i)) instrs
     end
-  | emitproc out (F.STRING(lab,s)) = TextIO.output(out,s)
+  | emitproc out (F.STRING(lab,s)) = TextIO.output(out,(S.name lab)^":\n" ^ s ^"\n")
 
   fun print_frags [] = ()
     | print_frags (frag::frags) = (case frag of
