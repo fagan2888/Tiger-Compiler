@@ -58,7 +58,7 @@ fun tempString temp =
 	case Temp.Map.find(tempMap,temp) of
 			SOME(register) => register
 		| NONE => Temp.makestring temp
-															
+
 fun makeRegs (0,[]) = []
 	| makeRegs (n,(name::names)) =
 		let
@@ -81,12 +81,15 @@ val argregs = makeRegs(4,[]) (* $a0-$a3 *)
 val calleesaves = makeRegs(8,[]) (* $s0-$s7 *)
 val callersaves = makeRegs (10,[]) (* $t0-$t9 *)
 
-fun procEntryExit1 (frame,body) = body 
+fun procEntryExit1 (frame,body) = body
 
 fun procEntryExit2 (frame,body) = body @ [Assem.OPER{assem="", src=specialregs @ calleesaves, dst=[],jump=SOME[]}]
 
 fun procEntryExit3 ({name=name, formals=formals, locals=locals}:frame, body : Assem.instr list) =
 		{prolog = "PROCEDURE " ^ Symbol.name name ^ "\n", body = body, epilog = "END " ^ Symbol.name name ^ "\n"}
+
+(* TODO: BEFORE: Create label for function, $ra onto 0(sp), $s0-$s7 push to stack, move stack by 4*(locals+1ra+8s), move $a_ into registers where used
+				 AFTER: jr $ra, change ra to 0(sp), return $t0-$t9 to sp, returning go to v0, move stack back *)
 
 datatype frag = PROC of {body: Tree.stm, frame: frame}
                 | STRING of Temp.label * string

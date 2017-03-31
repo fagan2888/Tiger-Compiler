@@ -104,7 +104,7 @@ struct
         LEVEL({frame=f, parent=p, unique=u}) => f
         | outermost => Frame.newFrame ({name=Temp.newlabel(), formals=[]})
       val pbody = T.MOVE(T.TEMP(Frame.RV), unEx (b))
-      val rbody = Frame.procEntryExit1(frame, pbody)
+      val rbody = T.SEQ[T.LABEL(#name frame),Frame.procEntryExit1(frame, pbody)] (* TODO: function label fix *)
       val frag = Frame.PROC({body=rbody,frame=frame})
     in
       frags := frag::(!frags)

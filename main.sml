@@ -11,7 +11,7 @@ struct
       val stms = Canon.linearize body
 (*         val _ = app (fn s => Printtree.printtree(out,s)) stms; *)
       val stms' = Canon.traceSchedule(Canon.basicBlocks stms)
-      val instrs =   List.concat(map (MipsGen.codegen frame) stms')
+      val instrs =   List.concat(map (MipsGen.codegen frame) stms') @ [Assem.OPER{assem="jr $ra\n", src=[],dst=[],jump=NONE}] (* TODO: fix ra after function *)
       val format0 = Assem.format(Temp.makestring)
     in
       app (fn i => TextIO.output(out,format0 i)) instrs
@@ -36,9 +36,9 @@ struct
       val ast = Parse.parse filename
 			val _ = FindEscape.prog ast
       val frags = Semant.transProg(ast)
-      val _ = if (!ErrorMsg.anyErrors) then () else (print_frags frags)
+      (* val _ = if (!ErrorMsg.anyErrors) then () else (print_frags frags) *)
     in
-      withOpenFile (filename ^ ".s") (fn out => (app (emitproc out) frags)) (* TODO: what is going on here *)
+      withOpenFile (filename ^ ".s") (fn out => (app (emitproc out) frags))
     end
 
 end

@@ -28,7 +28,7 @@ struct
         | munchStm (T.MOVE(a,b)) = ()
         | munchStm (T.LABEL lab) = emit(A.LABEL{assem=(S.name lab) ^ ":\n", lab=lab})
         | munchStm (T.JUMP(T.NAME(lab),lablist)) = emit(A.OPER{assem="j " ^ (S.name lab) ^ "\n", src=[], dst=[], jump=SOME(lablist)})
-        | munchStm (T.JUMP(e1,lablist)) = ()
+        | munchStm (T.JUMP(e1,lablist)) = emit(A.OPER{assem="jr `j0\n", src=[munchExp e1],dst=[],jump=SOME(lablist)})
         | munchStm (T.CJUMP(relop,e1,e2,l1,l2)) = emit(A.OPER{assem=T.relString(relop) ^ " `s0, `s1, " ^ (S.name l1) ^ "\n", src=[munchExp e1, munchExp e2], dst=[], jump=SOME[l1,l2]})
         | munchStm (T.EXP(e)) = (munchExp e; ())
 
