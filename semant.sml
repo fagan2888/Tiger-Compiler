@@ -202,10 +202,10 @@ struct
         end
 
       and check_func (func,args,pos) =  (case S.look(venv, func) of
-          SOME (E.FunEntry{level=lvl,label=lbl,formals=tylist, result=ty}) => check_args(lbl,args,tylist,ty,pos)
+          SOME (E.FunEntry{level=lvl,label=lbl,formals=tylist, result=ty}) => check_args(lbl,args,tylist,ty,pos,lvl)
         | _ => (ErrorMsg.error pos ("undefined function: " ^ S.name(func)); {exp=R.nilExp(), ty=T.BOTTOM}))
 
-      and check_args (lbl,args,tylist,ty,pos) =
+      and check_args (lbl,args,tylist,ty,pos,declvl) =
         let
           fun check_arg_types ((exp::exps),(t::tys)) =
             let
@@ -218,7 +218,7 @@ struct
           val return_ty = if List.length(tylist)=List.length(args) then (if check_arg_types(args,tylist) then ty else T.BOTTOM) else (ErrorMsg.error pos ("incorrect number of arguments"); T.BOTTOM)
           fun map_args arg = #exp (trexp arg)
         in
-          {exp=R.callExp(lbl,(map map_args args)), ty=return_ty}
+          {exp=R.callExp(lbl,(map map_args args),level,declvl), ty=return_ty}
         end
 
       and check_record (fields,typ,pos) = (case S.look(tenv, typ) of
@@ -370,8 +370,9 @@ struct
 
   fun transProg exp =
     let
-      val level = R.newLevel{parent=R.outermost,name=Temp.newlabel(),formals=[]}
-      val expty = (transExp (E.base_venv, E.base_tenv, Temp.newlabel(), level) exp)
+      val main_label = Temp.namedlabel("tiger_main")
+      val level = R.newLevel{parent=R.outermost,name=main_label,formals=[]}
+      val expty = (transExp (E.base_venv, E.base_tenv, main_label, level) exp)
       val _ = R.procEntryExit {level=level, body=(#exp expty)}
     in
       R.getResult()

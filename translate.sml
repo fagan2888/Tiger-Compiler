@@ -23,7 +23,7 @@ sig
   val nilExp: unit -> exp
   val intExp: int -> exp
   val stringExp: string -> exp
-  val callExp: Temp.label * exp list -> exp
+  val callExp: Temp.label * exp list * level * level -> exp
   val opExp: Absyn.oper * exp * exp -> exp
   val recordExp: exp list -> exp
   val seqExp: exp list -> exp
@@ -110,14 +110,13 @@ struct
       frags := frag::(!frags)
     end
 
-  fun simpleVar ((lvl1, frm), lvl2) =
-    let
-      fun find_link (TOP,_) = (ErrorMsg.error 0 ("var on outermost level"); T.TEMP(Frame.FP))
-        | find_link (_,TOP) = (ErrorMsg.error 0 ("var on outermost level"); T.TEMP(Frame.FP))
-        | find_link (lvl1 as LEVEL({frame=f1, parent=p1, unique=u1}),LEVEL({frame=f2, parent=p2, unique=u2})) = if u1=u2 then T.TEMP(Frame.FP) else T.MEM(find_link(lvl1, p2))
-    in
-      Ex (Frame.exp frm (find_link(lvl1, lvl2)))
-    end
+    (* TODO: function label names (not just new labels) *)
+
+  fun find_link (TOP,_) = (ErrorMsg.error 0 ("var on outermost level"); T.TEMP(Frame.FP))
+    | find_link (_,TOP) = (ErrorMsg.error 0 ("var on outermost level"); T.TEMP(Frame.FP))
+    | find_link (lvl1 as LEVEL({frame=f1, parent=p1, unique=u1}),LEVEL({frame=f2, parent=p2, unique=u2})) = if u1=u2 then T.TEMP(Frame.FP) else T.MEM(find_link(lvl1, p2))
+
+  fun simpleVar ((lvl1, frm), lvl2) = Ex (Frame.exp frm (find_link(lvl1, lvl2)))
 
 	fun subscriptVar (v,exp) =
 		let
@@ -143,7 +142,7 @@ struct
       search_frags (!frags)
     end
 
-  fun callExp (label, exps) = Ex(T.CALL(T.NAME(label), map unEx exps))
+  fun callExp (label, exps, call, decl) = Ex(T.CALL(T.NAME(label), find_link(call,decl)::(map unEx exps)))
 
   fun opExp (A.PlusOp, exp1, exp2) = Ex(T.BINOP(T.PLUS, unEx exp1, unEx exp2))
     | opExp (A.MinusOp, exp1, exp2) = Ex(T.BINOP(T.MINUS, unEx exp1, unEx exp2))
