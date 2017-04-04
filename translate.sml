@@ -155,16 +155,6 @@ struct
     | opExp (A.GtOp, exp1, exp2) = Cx(fn(t,f) => T.CJUMP(T.GT, unEx(exp1), unEx(exp2), t, f))
     | opExp (A.GeOp, exp1, exp2) = Cx(fn(t,f) => T.CJUMP(T.GE, unEx(exp1), unEx(exp2), t, f))
 
-  fun recordExp (exps) =
-    let
-      val r = Temp.newtemp()
-      val init = [T.MOVE(T.TEMP(r),T.CALL(T.NAME(Temp.newlabel()),[T.CONST(List.length(exps)*Frame.wordsize)]))]
-      fun create_seq (exp, list) = T.MOVE(T.MEM(T.BINOP(T.PLUS,T.TEMP(r),T.CONST((List.length(list)-1)*Frame.wordsize))),unEx(exp))::list
-      val rec_seq = foldl create_seq init exps
-    in
-      Ex(T.ESEQ(T.SEQ(rec_seq),T.TEMP(r)))
-    end
-
   fun seqExp [] = Ex (T.CONST 0)
     | seqExp [exp] = exp
     | seqExp (exps) = Ex(T.ESEQ(T.SEQ(map unNx (List.take(exps,List.length(exps)-1))), unEx (List.last(exps))))
@@ -213,14 +203,13 @@ struct
 	fun recordExp (exps) =
     let
       val r = Temp.newtemp()
-      val init = [T.MOVE(T.TEMP(r),T.CALL(T.NAME(Temp.newlabel()),[T.CONST(List.length(exps)*Frame.wordsize)]))]
+      val init = [T.MOVE(T.TEMP(r),Frame.externalCall("tiger_init_record",[T.CONST(List.length(exps)*Frame.wordsize)]))]
       fun create_seq (exp, list) = T.MOVE(T.MEM(T.BINOP(T.PLUS,T.TEMP(r),T.CONST((List.length(list)-1)*Frame.wordsize))),unEx(exp))::list
       val rec_seq = foldl create_seq init exps
     in
       Ex(T.ESEQ(T.SEQ(rec_seq),T.TEMP(r)))
     end
-
-
+				
 	fun arrayExp (exp1, exp2) =
 		let
 				val r = Temp.newtemp();
