@@ -17,12 +17,15 @@ structure makegraph : MAKEGRAPH =
 struct
   fun instrs2graph alist =
     let
-      (* Add each inst as a node and create label map *)
+      (* Add each inst as a node *)
       val nodeID = ref 0
-      fun add_node (a, (graph, label)) =
-        (nodeID:=(!nodeID)+1;
-        (G.addNode(graph,!nodeID,a), case a of A.LABEL{assem,lab} => L.insert(label,Symbol.name(lab),!nodeID) | _ => label))
-      val (graph, labmap) = foldl add_node (G.empty,L.empty) alist
+      fun add_node (a, graph) = (nodeID:=(!nodeID)+1; G.addNode(graph,!nodeID,a))
+      val graph = foldl add_node G.empty alist
+
+      (* Create label map*)
+      val _ = nodeID := 0
+      fun make_labmap (a, labmap) = (nodeID:=(!nodeID)+1; case a of A.LABEL{assem,lab} => L.insert(labmap,Symbol.name(lab),!nodeID) | _ => labmap)
+      val labmap = foldl make_labmap L.empty alist
 
       (* create edges *)
       val lastNode = nodeID
@@ -34,17 +37,34 @@ struct
           | NONE => label_edge (list,graph)
       fun add_edge (a, graph) = (nodeID:=(!nodeID)+1;
         case a of
-          A.OPER{assem, src, dst, jump} => (case jump of NONE => next_edge graph | SOME(jlist) => label_edge (jlist,graph))
+          A.OPER{assem, dst, src, jump} => (case jump of NONE => next_edge graph | SOME(jlist) => label_edge (jlist,graph))
           | _ => next_edge graph)
       val graph' = foldl add_edge graph alist
 
-      fun make_def (a, map) = map (* TODO *)
+      (* made def *)
+      val _ = nodeID := 0
+      fun make_def (a, map) = (nodeID:=(!nodeID)+1;
+        case a of
+          A.OPER{assem,dst,src,jump} => M.insert(map,!nodeID,dst)
+          | A.MOVE{assem,dst,src} => M.insert(map,!nodeID,[dst])
+          | _ => M.insert(map,!nodeID,[]))
       val def = foldl make_def M.empty alist
 
-      fun make_use (a, map) = map (* TODO *)
+      (* make use *)
+      val _ = nodeID := 0
+      fun make_use (a, map) = (nodeID:=(!nodeID)+1;
+        case a of
+          A.OPER{assem,dst,src,jump} => M.insert(map,!nodeID,src)
+          | A.MOVE{assem,dst,src} => M.insert(map,!nodeID,[src])
+          | _ => M.insert(map,!nodeID,[]))
       val use = foldl make_use M.empty alist
 
-      fun make_move (a, map) = map (* TODO *)
+      (* make ismove *)
+      val _ = nodeID := 0
+      fun make_move (a, map) = (nodeID:=(!nodeID)+1;
+        case a of
+          A.MOVE{assem,dst,src} => M.insert(map,!nodeID,true)
+          | _ => M.insert(map,!nodeID,false))
       val move = foldl make_move M.empty alist
     in
       (F.FLOWGRAPH{control=graph',def=def,use=use,ismove=move},G.nodes(graph'))
