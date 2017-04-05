@@ -59,7 +59,7 @@ struct
           let
             val argDst = if (n<4) then List.nth(F.argregs,n) else Temp.newtemp()
             val _ = if (n<4)
-                    then emit(A.MOVE{assem="mv $a" ^ Int.toString n ^ ", 0(`s0)\n", src=(munchExp arg), dst=argDst})
+                    then emit(A.MOVE{assem="mv $a" ^ Int.toString n ^ ", `s0\n", src=(munchExp arg), dst=argDst})
                     else emit(A.OPER{assem="sw `s0, " ^ Int.toString (4*(n-4)) ^ "($sp)\n", src=[munchExp (T.TEMP(List.nth(F.specialregs,2))), munchExp arg], dst=[], jump=NONE})
           in
             argDst::munchArgs(n+1,args)
