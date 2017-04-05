@@ -29,7 +29,7 @@ sig
   val seqExp: exp list -> exp
   val assignExp: exp * exp -> exp
   val ifThenExp: exp * exp -> exp
-  val ifThenElse: exp * exp * exp -> exp
+  val ifThenElseExp: exp * exp * exp -> exp
   val whileExp: Temp.label * exp * exp -> exp
 	val forExp: Temp.label * exp * exp * exp * exp -> exp
 	val breakExp: Temp.label -> exp
@@ -37,7 +37,7 @@ sig
 
 end
 
-structure Translate =
+structure Translate : TRANSLATE=
 struct
 
   structure T = Tree
@@ -209,7 +209,7 @@ struct
     in
       Ex(T.ESEQ(T.SEQ(rec_seq),T.TEMP(r)))
     end
-				
+
 	fun arrayExp (exp1, exp2) =
 		let
 				val r = Temp.newtemp();

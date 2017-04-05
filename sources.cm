@@ -24,6 +24,7 @@ assem.sml
 funcgraph.sig
 funcgraph.sml
 mipsgen.sml
+makegraph.sml
 main.sml
 $/smlnj-lib.cm
 $/ml-yacc-lib.cm
