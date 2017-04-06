@@ -1,16 +1,16 @@
-structure G = FuncGraph(type ord_key = int; val compare = Int.compare)
 structure M = SplayMapFn(type ord_key = int; val compare = Int.compare)
 structure L = SplayMapFn(type ord_key = string; val compare = String.compare)
 structure A = Assem
 
 structure Flow =
 struct
-datatype flowgraph = FLOWGRAPH of {control: A.instr G.graph, def: Temp.temp list M.map, use: Temp.temp list M.map, ismove: bool M.map}
+structure Graph = FuncGraph(type ord_key = int; val compare = Int.compare)
+datatype flowgraph = FLOWGRAPH of {control: A.instr Graph.graph, def: Temp.temp list M.map, use: Temp.temp list M.map, ismove: bool M.map}
 end
 
 signature MAKEGRAPH =
 sig
-    val instrs2graph : A.instr list -> Flow.flowgraph * A.instr G.node list
+    val instrs2graph : A.instr list -> Flow.flowgraph * A.instr Flow.Graph.node list
 end
 
 structure Makegraph : MAKEGRAPH =
@@ -19,8 +19,8 @@ struct
     let
       (* Add each inst as a node *)
       val nodeID = ref 0
-      fun add_node (a, graph) = (nodeID:=(!nodeID)+1; G.addNode(graph,!nodeID,a))
-      val graph = foldl add_node G.empty alist
+      fun add_node (a, graph) = (nodeID:=(!nodeID)+1; Flow.Graph.addNode(graph,!nodeID,a))
+      val graph = foldl add_node Flow.Graph.empty alist
 
       (* Create label map*)
       val _ = nodeID := 0
@@ -30,10 +30,10 @@ struct
       (* create edges *)
       val lastNode = nodeID
       val _ = nodeID := 0
-      fun next_edge graph = if (!nodeID)=(!lastNode) then graph else G.addEdge(graph, {from=(!nodeID), to=(!nodeID)+1})
+      fun next_edge graph = if (!nodeID)=(!lastNode) then graph else Flow.Graph.addEdge(graph, {from=(!nodeID), to=(!nodeID)+1})
       fun label_edge ([], graph) = graph
         | label_edge (lab::list, graph) = case L.find(labmap, Symbol.name(lab)) of
-          SOME(labID) => label_edge (list, G.addEdge(graph,{from=(!nodeID), to=labID}))
+          SOME(labID) => label_edge (list, Flow.Graph.addEdge(graph,{from=(!nodeID), to=labID}))
           | NONE => label_edge (list,graph)
       fun add_edge (a, graph) = (nodeID:=(!nodeID)+1;
         case a of
@@ -67,6 +67,6 @@ struct
           | _ => M.insert(map,!nodeID,false))
       val move = foldl make_move M.empty alist
     in
-      (Flow.FLOWGRAPH{control=graph',def=def,use=use,ismove=move},G.nodes(graph'))
+      (Flow.FLOWGRAPH{control=graph',def=def,use=use,ismove=move},Flow.Graph.nodes(graph'))
     end
 end
