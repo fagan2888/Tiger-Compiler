@@ -25,6 +25,7 @@ funcgraph.sig
 funcgraph.sml
 mipsgen.sml
 makegraph.sml
+liveness.sml
 main.sml
 $/smlnj-lib.cm
 $/ml-yacc-lib.cm

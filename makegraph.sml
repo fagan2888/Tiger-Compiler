@@ -3,17 +3,17 @@ structure M = SplayMapFn(type ord_key = int; val compare = Int.compare)
 structure L = SplayMapFn(type ord_key = string; val compare = String.compare)
 structure A = Assem
 
-structure F =
+structure Flow =
 struct
 datatype flowgraph = FLOWGRAPH of {control: A.instr G.graph, def: Temp.temp list M.map, use: Temp.temp list M.map, ismove: bool M.map}
 end
 
 signature MAKEGRAPH =
 sig
-    val instrs2graph : A.instr list -> F.flowgraph * A.instr G.node list
+    val instrs2graph : A.instr list -> Flow.flowgraph * A.instr G.node list
 end
 
-structure makegraph : MAKEGRAPH =
+structure Makegraph : MAKEGRAPH =
 struct
   fun instrs2graph alist =
     let
@@ -67,6 +67,6 @@ struct
           | _ => M.insert(map,!nodeID,false))
       val move = foldl make_move M.empty alist
     in
-      (F.FLOWGRAPH{control=graph',def=def,use=use,ismove=move},G.nodes(graph'))
+      (Flow.FLOWGRAPH{control=graph',def=def,use=use,ismove=move},G.nodes(graph'))
     end
 end
