@@ -24,10 +24,21 @@ fun interferenceGraph (fg as Flow.FLOWGRAPH{control,def,use,ismove}) =
 			fun compLiveness (inMap,outMap) =
 				let
 						fun concatList (list1,list2) = list1 @ list2
+																											 
 						fun filterList (list1,list2) =
 							List.filter (fn x => List.all (fn y => x <> y) list2) list1
+
+						fun eqMap (map1, map2) =
+							let
+									val maplist1 = M.listItems(map1)
+									val maplist2 = M.listItems(map2)
+							in
+									maplist1 = maplist2
+							end
+													
 						val outDefMap = M.unionWith filterList (outMap, (#def fg))
 						val inMap' = M.unionWith concatList ((#use fg), outDefMap)
+																		 
 						fun getOut node =
 							let
 									val succList = Flow.Graph.succs' (#control fg) node
@@ -36,11 +47,11 @@ fun interferenceGraph (fg as Flow.FLOWGRAPH{control,def,use,ismove}) =
 							in
 									M.insert(outMap, nodeID, map getLive succList)
 							end
-
+									
 						val nodeList = Flow.Graph.nodes (#control fg)
 						val outMap' = foldl getOut M.empty nodeList
 				in
-						if (inMap = inMap' andalso outMap = outMap') then
+						if (eqMap(inMap,inMap') andalso eqMap(outMap,outMap')) then
 								(inMap,outMap)
 						else
 								compLiveness(inMap',outMap')
