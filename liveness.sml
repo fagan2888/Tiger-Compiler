@@ -23,7 +23,13 @@ fun interferenceGraph (fg as Flow.FLOWGRAPH{control,def,use,ismove}) =
 			(* Create Live-In and Live-Out maps *)
 			fun compLiveness (inMap,outMap) =
 				let
-						fun concatList (list1,list2) = list1 @ list2
+						fun concatList (list1,list2) =
+							let
+									fun removeDups [] = []
+										| removeDups (x::xs) = x::removeDups(List.filter (fn y => y <> x) xs)
+							in
+									removeDups(list1 @ list2)
+							end
 																											 
 						fun filterList (list1,list2) =
 							List.filter (fn x => List.all (fn y => x <> y) list2) list1
@@ -56,6 +62,15 @@ fun interferenceGraph (fg as Flow.FLOWGRAPH{control,def,use,ismove}) =
 						else
 								compLiveness(inMap',outMap')
 				end
+
+			(* Create Nodes of Igraph *)
+      val nodeID = ref 0
+			val templist = [] (* TODO *)
+      fun add_node (a, graph) = (nodeID:=(!nodeID)+1; Flow.Graph.addNode(graph,!nodeID,a))
+      val graph = foldl add_node Flow.Graph.empty templist
+
+			(* Create Edges of IGraph *)
+						
 
 						(* TODO: Create Interference Graph nodes, each of which is a temp
 Create Interference Graph edges by iterating through the flow nodes. Where there is a newly defined temp and existing temps are in the liveOut map, add an edge between them
