@@ -19,18 +19,20 @@ fun interferenceGraph (fg as Flow.FLOWGRAPH{control,def,use,ismove}) =
 	let
 			val liveInMap = M.empty
 			val liveOutMap = M.empty
+
+			(*Concatenate two lists and remove duplicates*)
+			fun concatList (list1,list2) =
+				let
+						fun removeDups [] = []
+							| removeDups (x::xs) = x::removeDups(List.filter (fn y => y <> x) xs)
+				in
+						removeDups(list1 @ list2)
+				end
+
 													 
 			(* Create Live-In and Live-Out maps *)
 			fun compLiveness (inMap,outMap) =
 				let
-						fun concatList (list1,list2) =
-							let
-									fun removeDups [] = []
-										| removeDups (x::xs) = x::removeDups(List.filter (fn y => y <> x) xs)
-							in
-									removeDups(list1 @ list2)
-							end
-																											 
 						fun filterList (list1,list2) =
 							List.filter (fn x => List.all (fn y => x <> y) list2) list1
 
@@ -65,8 +67,8 @@ fun interferenceGraph (fg as Flow.FLOWGRAPH{control,def,use,ismove}) =
 
 			(* Create Nodes of Igraph *)
       val nodeID = ref 0
-			val templist = [] (* TODO *)
-      fun add_node (a, graph) = (nodeID:=(!nodeID)+1; Flow.Graph.addNode(graph,!nodeID,a))
+			val templist = concatList(concat(M.listItems(#use fg)),concat(M.listItems(#def fg)))
+      fun add_node (t, graph) = (nodeID:=(!nodeID)+1; Flow.Graph.addNode(graph,!nodeID,t))
       val graph = foldl add_node Flow.Graph.empty templist
 
 			(* Create Edges of IGraph *)
