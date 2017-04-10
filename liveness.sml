@@ -128,15 +128,18 @@ fun interferenceGraph (fg as Flow.FLOWGRAPH{control,def,use,ismove}) =
 						val isMove = case M.find(ismove,nodeID) of
 														 SOME(bool) => bool
 													 | NONE => false
-						val temp1 = temptoNode(List.hd(case M.find(def,nodeID) of
-																							 SOME(tlist) => tlist
-																						 | NONE => []))
-						val temp2 = temptoNode(List.hd(case M.find(use,nodeID) of
-																							 SOME(tlist) => tlist
-																						 | NONE => []))
 				in
 						if isMove then
-								(temp1,temp2)::list
+								let
+										val temp1 = temptoNode(List.hd(case M.find(def,nodeID) of
+																											 SOME(tlist) => tlist
+																										 | NONE => []))
+										val temp2 = temptoNode(List.hd(case M.find(use,nodeID) of
+																											 SOME(tlist) => tlist
+																										 | NONE => []))
+								in
+										(temp1,temp2)::list
+								end
 						else
 								list
 				end
