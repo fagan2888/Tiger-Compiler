@@ -37,10 +37,10 @@ fun interferenceGraph (fg as Flow.FLOWGRAPH{control,def,use,ismove}) =
 							in
 									maplist1 = maplist2
 							end
-													
+
 						val outDefMap = M.unionWith filterList (outMap, def)
 						val inMap' = M.unionWith concatList (use, outDefMap)
-																		 
+
 						fun getOut (node,somemap) =
 							let
 									val succList = Flow.Graph.succs node
@@ -52,7 +52,7 @@ fun interferenceGraph (fg as Flow.FLOWGRAPH{control,def,use,ismove}) =
 							in
 									M.insert(somemap, nodeID, List.concat(map getLive succList))
 							end
-									
+
 						val nodeList = Flow.Graph.nodes control
 						val outMap' = foldl getOut M.empty nodeList
 				in
@@ -96,7 +96,7 @@ fun interferenceGraph (fg as Flow.FLOWGRAPH{control,def,use,ismove}) =
 				case Temp.Map.find(tnode,t) of
 						SOME(node) => node
 					| NONE => Flow.Graph.getNode(Flow.Graph.empty, ~1)
-																			
+
 			fun makeEdges (defs,graph) =
 				let
 						val liveouts =
@@ -145,7 +145,7 @@ fun interferenceGraph (fg as Flow.FLOWGRAPH{control,def,use,ismove}) =
 	in
 			(IGRAPH{graph=igraph',tnode=tnode,gtemp=gtemp,moves=moves'},liveOutMap)
 	end
-			
+
 
 fun show (outstream, IGRAPH{graph,tnode,gtemp,moves}) =
 		Flow.Graph.printGraph (fn (nodeID,temp) => "Node " ^ (Int.toString nodeID) ^ ": " ^ (Temp.makestring temp)) graph

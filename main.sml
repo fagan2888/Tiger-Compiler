@@ -12,6 +12,9 @@ struct
 (*         val _ = app (fn s => Printtree.printtree(out,s)) stms; *)
       val stms' = Canon.traceSchedule(Canon.basicBlocks stms)
       val instrs =   List.concat(map (MipsGen.codegen frame) stms') @ [Assem.OPER{assem="jr $ra\n", src=[],dst=[],jump=NONE}] (* TODO: fix ra after function *)
+      val fgraph = #1 (Makegraph.instrs2graph instrs)
+      (*val igraph = #1 (Liveness.interferenceGraph fgraph)
+      val _ = (Liveness.show (TextIO.stdOut,igraph))*)
       val format0 = Assem.format(Temp.makestring)
     in
       app (fn i => TextIO.output(out,format0 i)) instrs
