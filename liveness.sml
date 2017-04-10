@@ -19,7 +19,7 @@ fun interferenceGraph (fg as Flow.FLOWGRAPH{control,def,use,ismove}) =
 			fun concatList (list1,list2) =
 				let
 						fun removeDups [] = []
-							| removeDups (x::xs) = x::removeDups(List.filter (fn y => y <> x) xs)
+							| removeDups (x::xs) = x::removeDups(List.filter (fn y => y <> x) xs) (* TODO: polyequal warning *)
 				in
 						removeDups(list1 @ list2)
 				end
@@ -28,14 +28,14 @@ fun interferenceGraph (fg as Flow.FLOWGRAPH{control,def,use,ismove}) =
 			fun compLiveness (inMap,outMap) =
 				let
 						fun filterList (list1,list2) =
-							List.filter (fn x => List.all (fn y => x <> y) list2) list1
+							List.filter (fn x => List.all (fn y => x <> y) list2) list1 (* TODO: polyequal warning *)
 
 						fun eqMap (map1, map2) =
 							let
 									val maplist1 = M.listItems(map1)
 									val maplist2 = M.listItems(map2)
 							in
-									maplist1 = maplist2
+									maplist1 = maplist2 (* TODO: polyequal warning *)
 							end
 
 						val outDefMap = M.unionWith filterList (outMap, def)
@@ -149,12 +149,5 @@ fun interferenceGraph (fg as Flow.FLOWGRAPH{control,def,use,ismove}) =
 	end
 
 
-fun show (IGRAPH{graph,tnode,gtemp,moves}) =
-  let
-    val strNode = (fn (nodeID,temp) => "Node " ^ (Int.toString nodeID) ^ ": " ^ (Temp.makestring temp))
-    fun make_string (nodeID, str) = str ^ ", " ^ (Int.toString nodeID)
-    val strAdj = (fn (adjlist) => foldl make_string "" adjlist)
-  in
-    Flow.Graph.printGraph strNode strAdj graph
-  end
+fun show (IGRAPH{graph,tnode,gtemp,moves}) = Flow.Graph.printGraph (fn (nodeID,temp) => "Node " ^ (Int.toString nodeID) ^ ": " ^ (Temp.makestring temp)) graph
 end

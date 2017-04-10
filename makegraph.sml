@@ -6,6 +6,20 @@ structure Flow =
 struct
 structure Graph = FuncGraph(type ord_key = int; val compare = Int.compare)
 datatype flowgraph = FLOWGRAPH of {control: A.instr Graph.graph, def: Temp.temp list M.map, use: Temp.temp list M.map, ismove: bool M.map}
+fun show (FLOWGRAPH{control,def,use,ismove}) =
+  let
+    fun strtlist ([],str) = str ^ "\n"
+      | strtlist ([temp],str) = str ^ (Temp.makestring temp) ^ "\n"
+      | strtlist (temp::list, str) = strtlist(list, str ^ (Temp.makestring temp) ^ ", ")
+    val _ = print ("USE\n")
+    val _ = M.appi (fn (id, templist) => print("Node " ^ (Int.toString id) ^ ": " ^ (strtlist (templist,"")))) use
+    val _ = print ("DEF\n")
+    val _ = M.appi (fn (id, templist) => print("Node " ^ (Int.toString id) ^ ": " ^ (strtlist (templist,"")))) def
+    val _ = print ("CONTROL\n")
+    val _ = Graph.printGraph (fn (id,instr) => "Node " ^ (Int.toString id)) control
+  in
+    ()
+  end
 end
 
 signature MAKEGRAPH =
