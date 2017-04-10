@@ -2,7 +2,7 @@ signature LIVENESS =
 sig
   type igraph
   val interferenceGraph : Flow.flowgraph -> igraph * (Temp.temp list M.map)
-  val show : TextIO.outstream * igraph -> unit
+  val show : igraph -> unit
 end
 
 structure Liveness : LIVENESS =
@@ -149,6 +149,12 @@ fun interferenceGraph (fg as Flow.FLOWGRAPH{control,def,use,ismove}) =
 	end
 
 
-fun show (outstream, IGRAPH{graph,tnode,gtemp,moves}) =
-		Flow.Graph.printGraph (fn (nodeID,temp) => "Node " ^ (Int.toString nodeID) ^ ": " ^ (Temp.makestring temp)) graph
+fun show (IGRAPH{graph,tnode,gtemp,moves}) =
+  let
+    val strNode = (fn (nodeID,temp) => "Node " ^ (Int.toString nodeID) ^ ": " ^ (Temp.makestring temp))
+    fun make_string (nodeID, str) = str ^ ", " ^ (Int.toString nodeID)
+    val strAdj = (fn (adjlist) => foldl make_string "" adjlist)
+  in
+    Flow.Graph.printGraph strNode strAdj graph
+  end
 end
