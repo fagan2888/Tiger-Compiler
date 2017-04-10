@@ -1,9 +1,7 @@
-(* structure M = SplayMapFn(type ord_key = int; val compare = Int.compare) *)
-												
 signature LIVENESS =
 sig
   type igraph
-  val interferenceGraph : Flow.flowgraph -> igraph (* * (Temp.temp Flow.Graph.node -> Temp.temp list) *)
+  val interferenceGraph : Flow.flowgraph -> igraph * (Temp.temp list M.map)
   val show : TextIO.outstream * igraph -> unit
 end
 
@@ -12,8 +10,8 @@ struct
 
 datatype igraph = IGRAPH of {graph: Temp.temp Flow.Graph.graph,
 														 tnode: Temp.temp Flow.Graph.node Temp.Map.map,
-														 gtemp: Temp.temp M.map (*,
-														 moves: (Temp.temp Flow.Graph.node * Temp.temp Flow.Graph.node) list *)}
+														 gtemp: Temp.temp M.map,
+														 moves: (Temp.temp Flow.Graph.node * Temp.temp Flow.Graph.node) list}
 
 fun interferenceGraph (fg as Flow.FLOWGRAPH{control,def,use,ismove}) =
 	let
@@ -88,21 +86,24 @@ fun interferenceGraph (fg as Flow.FLOWGRAPH{control,def,use,ismove}) =
 
 			(* Create Edges of IGraph *)
 			val _ = nodeID:=1
-
-			fun temptoNode t =
+			fun temptoNodeID t =
 				Flow.Graph.getNodeID(
 						case Temp.Map.find(tnode,t) of
 								SOME(node) => node
 							| NONE => Flow.Graph.getNode(Flow.Graph.empty,~1) (* should never happen *)
 				)
-													
+			fun temptoNode t =
+				case Temp.Map.find(tnode,t) of
+						SOME(node) => node
+					| NONE => Flow.Graph.getNode(Flow.Graph.empty, ~1)
+																			
 			fun makeEdges (defs,graph) =
 				let
 						val liveouts =
 								case M.find(liveOutMap,!nodeID) of
 										SOME(templist) => templist
 									| NONE => []
-						val liveNodes = map temptoNode liveouts
+						val liveNodes = map temptoNodeID liveouts
 						fun addEdges (graph, x::xs, y::ys) =
 							let
 									fun addEdge (graph, t1, t2::t2s) = addEdge(Flow.Graph.doubleEdge(graph,t1,t2),t1,t2s)
@@ -117,17 +118,35 @@ fun interferenceGraph (fg as Flow.FLOWGRAPH{control,def,use,ismove}) =
 						addEdges(graph,defs,liveNodes))
 				end
 
-			val defNodes = M.map (map temptoNode) def
+			val defNodes = M.map (map temptoNodeID) def
 			val igraph' = M.foldl makeEdges igraph defNodes
 
+			(* TODO: Finish move *)
+			fun makeMove (node,list) =
+				let
+						val nodeID = Flow.Graph.getNodeID node
+						val isMove = case M.find(ismove,nodeID) of
+														 SOME(bool) => bool
+													 | NONE => false
+						val temp1 = temptoNode(List.hd(case M.find(def,nodeID) of
+																							 SOME(tlist) => tlist
+																						 | NONE => []))
+						val temp2 = temptoNode(List.hd(case M.find(use,nodeID) of
+																							 SOME(tlist) => tlist
+																						 | NONE => []))
+				in
+						if isMove then
+								(temp1,temp2)::list
+						else
+								list
+				end
 
-(* TODO: Finish move *)
-
+			val moves' = foldl makeMove [] (Flow.Graph.nodes(control))
 	in
-			IGRAPH{graph=igraph',tnode=tnode,gtemp=gtemp(*,moves=[]*)}
+			(IGRAPH{graph=igraph',tnode=tnode,gtemp=gtemp,moves=moves'},liveOutMap)
 	end
 			
 
-fun show (outstream, IGRAPH{graph,tnode,gtemp(*,moves*)}) =
+fun show (outstream, IGRAPH{graph,tnode,gtemp,moves}) =
 		Flow.Graph.printGraph (fn (nodeID,temp) => "Node " ^ (Int.toString nodeID) ^ ": " ^ (Temp.makestring temp)) graph
 end
