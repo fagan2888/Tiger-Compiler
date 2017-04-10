@@ -121,7 +121,6 @@ fun interferenceGraph (fg as Flow.FLOWGRAPH{control,def,use,ismove}) =
 			val defNodes = M.map (map temptoNodeID) def
 			val igraph' = M.foldl makeEdges igraph defNodes
 
-			(* TODO: Finish move *)
 			fun makeMove (node,list) =
 				let
 						val nodeID = Flow.Graph.getNodeID node
