@@ -116,25 +116,16 @@ fun isAdjacent ((n1,_,s1,p1),(n2,_,s2,p2)) =
 fun printGraph stringify g =
   let
 		fun println x = print(x ^"\n")
-		fun stringNid nid =
-			let
-				val (_,data,_,_) = getNode(g,nid)
-			in
-				"   "^ stringify(nid,data)
-			end
-		fun prSet s = NodeSet.app (println o stringNid) s
-		fun strAdj ([],str) = str
-			| strAdj ([id],str) = str ^ stringify (id, nodeInfo (getNode (g, id)))
-			| strAdj (id::list, str) = strAdj(list, str ^ stringify (id, nodeInfo (getNode (g, id))) ^ ", ")
+		fun strNodes ([],str) = str
+			| strNodes ([id],str) = str ^ stringify (id, nodeInfo (getNode (g, id)))
+			| strNodes (id::list, str) = strNodes(list, str ^ stringify (id, nodeInfo (getNode (g, id))) ^ ", ")
 		fun prOneNode(nid,data,succs,preds) =
 			let
 				val adjlist = adj (getNode (g, nid))
 				val () = println(stringify(nid,data))
-				val () = println(" -> Successors:")
-				val () = prSet succs
-				val () = println(" -> Predecessors:")
-				val () = prSet preds
-(*				val () = println(" -> Adjacent: " ^ (strAdj (adjlist,""))) *)
+				val () = println(" -> Successors: " ^ strNodes ((NodeSet.listItems succs), ""))
+				val () = println(" -> Predecessors: " ^ strNodes ((NodeSet.listItems preds), ""))
+				val () = println(" -> Adjacent: " ^ (strNodes (adjlist,"")))
 	  	in
 				()
 	  	end
