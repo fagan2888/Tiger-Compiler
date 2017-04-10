@@ -31,18 +31,17 @@ structure Makegraph : MAKEGRAPH =
 struct
   fun instrs2graph alist =
     let
-      (* Add each inst as a node *)
-      val nodeID = ref 0
-      fun add_node (a, graph) = (nodeID:=(!nodeID)+1; Flow.Graph.addNode(graph,!nodeID,a))
+      (* Add each inst as a node, keeps last node at the end *)
+      val lastNode = ref 0
+      fun add_node (a, graph) = (lastNode:=(!lastNode)+1; Flow.Graph.addNode(graph,!lastNode,a))
       val graph = foldl add_node Flow.Graph.empty alist
 
       (* Create label map*)
-      val _ = nodeID := 0
+      val nodeID = ref 0
       fun make_labmap (a, labmap) = (nodeID:=(!nodeID)+1; case a of A.LABEL{assem,lab} => L.insert(labmap,Symbol.name(lab),!nodeID) | _ => labmap)
       val labmap = foldl make_labmap L.empty alist
 
       (* create edges *)
-      val lastNode = nodeID
       val _ = nodeID := 0
       fun next_edge graph = if (!nodeID)=(!lastNode) then graph else Flow.Graph.addEdge(graph, {from=(!nodeID), to=(!nodeID)+1})
       fun label_edge ([], graph) = graph
