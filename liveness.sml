@@ -16,10 +16,10 @@ datatype igraph = IGRAPH of {graph: Temp.temp Flow.Graph.graph,
 fun interferenceGraph (fg as Flow.FLOWGRAPH{control,def,use,ismove}) =
 	let
 			(*Concatenate two lists and remove duplicates*)
-			fun concatList (list1,list2) =
+			fun concatList (list1 : Temp.temp list,list2 : Temp.temp list) =
 				let
 						fun removeDups [] = []
-							| removeDups (x::xs) = x::removeDups(List.filter (fn y => y <> x) xs) (* TODO: polyequal warning *)
+							| removeDups (x::xs) = x::removeDups(List.filter (fn y => y <> x) xs)
 				in
 						removeDups(list1 @ list2)
 				end
@@ -27,15 +27,15 @@ fun interferenceGraph (fg as Flow.FLOWGRAPH{control,def,use,ismove}) =
 			(* Create Live-In and Live-Out maps *)
 			fun compLiveness (inMap,outMap) =
 				let
-						fun filterList (list1,list2) =
-							List.filter (fn x => List.all (fn y => x <> y) list2) list1 (* TODO: polyequal warning *)
+						fun filterList (list1 : Temp.temp list, list2 : Temp.temp list) =
+							List.filter (fn x => List.all (fn y => x <> y) list2) list1
 
-						fun eqMap (map1, map2) =
+						fun eqMap (map1 : Temp.temp list M.map, map2 : Temp.temp list M.map) =
 							let
 									val maplist1 = M.listItems(map1)
 									val maplist2 = M.listItems(map2)
 							in
-									maplist1 = maplist2 (* TODO: polyequal warning *)
+									maplist1 = maplist2
 							end
 
 						val outDefMap = M.unionWith filterList (outMap, def)
