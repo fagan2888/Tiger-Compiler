@@ -5,21 +5,21 @@ structure A = Assem
 structure Flow =
 struct
 structure Graph = FuncGraph(type ord_key = int; val compare = Int.compare)
-datatype flowgraph = FLOWGRAPH of {control: A.instr Graph.graph, def: Temp.temp list M.map, use: Temp.temp list M.map, ismove: bool M.map}
+datatype flowgraph = FLOWGRAPH of {control: A.instr Graph.graph, def: Temp.Set.set M.map, use: Temp.Set.set M.map, ismove: bool M.map}
 fun show (FLOWGRAPH{control,def,use,ismove}) =
   let
     fun strtlist ([],str) = str ^ "\n"
       | strtlist ([temp],str) = str ^ (Temp.makestring temp) ^ "\n"
       | strtlist (temp::list, str) = strtlist(list, str ^ (Temp.makestring temp) ^ ", ")
     val _ = print ("USE\n")
-    val _ = M.appi (fn (id, templist) => print("Node " ^ (Int.toString id) ^ ": " ^ (strtlist (templist,"")))) use
+    val _ = M.appi (fn (id, templist) => print("Node " ^ (Int.toString id) ^ ": " ^ (strtlist (templist,"")))) (M.map Temp.Set.listItems use)
     val _ = print ("DEF\n")
-    val _ = M.appi (fn (id, templist) => print("Node " ^ (Int.toString id) ^ ": " ^ (strtlist (templist,"")))) def
+    val _ = M.appi (fn (id, templist) => print("Node " ^ (Int.toString id) ^ ": " ^ (strtlist (templist,"")))) (M.map Temp.Set.listItems def)
     val _ = print ("CONTROL\n")
     val _ = Graph.printGraph (fn (id,instr) => "Node " ^ (Int.toString id)) control
   in
     ()
-  end
+  end 
 end
 
 signature MAKEGRAPH =
@@ -58,18 +58,18 @@ struct
       val _ = nodeID := 0
       fun make_def (a, map) = (nodeID:=(!nodeID)+1;
         case a of
-          A.OPER{assem,dst,src,jump} => M.insert(map,!nodeID,dst)
-          | A.MOVE{assem,dst,src} => M.insert(map,!nodeID,[dst])
-          | _ => M.insert(map,!nodeID,[]))
+          A.OPER{assem,dst,src,jump} => M.insert(map,!nodeID,Temp.Set.addList(Temp.Set.empty,dst))
+          | A.MOVE{assem,dst,src} => M.insert(map,!nodeID,Temp.Set.add(Temp.Set.empty,dst))
+          | _ => M.insert(map,!nodeID,Temp.Set.empty))
       val def = foldl make_def M.empty alist
 
       (* make use *)
       val _ = nodeID := 0
       fun make_use (a, map) = (nodeID:=(!nodeID)+1;
         case a of
-          A.OPER{assem,dst,src,jump} => M.insert(map,!nodeID,src)
-          | A.MOVE{assem,dst,src} => M.insert(map,!nodeID,[src])
-          | _ => M.insert(map,!nodeID,[]))
+          A.OPER{assem,dst,src,jump} => M.insert(map,!nodeID,Temp.Set.addList(Temp.Set.empty,src))
+          | A.MOVE{assem,dst,src} => M.insert(map,!nodeID,Temp.Set.add(Temp.Set.empty,src))
+          | _ => M.insert(map,!nodeID,Temp.Set.empty))
       val use = foldl make_use M.empty alist
 
       (* make ismove *)

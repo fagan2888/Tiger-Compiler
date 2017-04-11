@@ -1,7 +1,7 @@
 signature LIVENESS =
 sig
   type igraph
-  val interferenceGraph : Flow.flowgraph -> igraph * (Temp.temp list M.map)
+  val interferenceGraph : Flow.flowgraph -> igraph * (Temp.Set.set M.map)
   val show : igraph -> unit
 end
 
@@ -15,51 +15,47 @@ datatype igraph = IGRAPH of {graph: Temp.temp Flow.Graph.graph,
 
 fun interferenceGraph (fg as Flow.FLOWGRAPH{control,def,use,ismove}) =
 	let
-			(*Concatenate two lists and remove duplicates*)
-			fun concatList (list1 : Temp.temp list,list2 : Temp.temp list) =
-				let
-						fun removeDups [] = []
-							| removeDups ((x : Temp.temp)::(xs: Temp.temp list)) = x::removeDups(List.filter (fn y => y <> x) xs)
-				in
-						removeDups(list1 @ list2)
-				end
-
 			(* Create Live-In and Live-Out maps *)
 			fun compLiveness (inMap,outMap) =
 				let
-						fun filterList (list1 : Temp.temp list, list2 : Temp.temp list) =
-							List.filter (fn x => List.all (fn y => x <> y) list2) list1
-
-						fun eqMap (map1 : Temp.temp list M.map, map2 : Temp.temp list M.map) =
+						fun eqMap (map1 : Temp.Set.set M.map, map2 : Temp.Set.set M.map) =
 							let
-									val maplist1 = M.listItems(map1)
-									val maplist2 = M.listItems(map2)
+									fun checkNode(nodeid, set1, ans) =
+										if ans
+										then case M.find(map1, nodeid) of
+														 SOME (set2) => Temp.Set.equal(set1,set2)
+													 | NONE => false
+										else false
 							in
-									maplist1 = maplist2
+									M.foldli checkNode true map2
 							end
 
-						val outDefMap = M.unionWith filterList (outMap, def)
-						val inMap' = M.unionWith concatList (use, outDefMap)
 
 						fun getOut (node,somemap) =
 							let
 									val succList = Flow.Graph.succs node
-									fun getLive id =
+									fun getLive (id,set) =
 										case M.find(inMap,id) of
-												SOME(templist) => templist
-											| NONE => []
+												SOME(tempset) => Temp.Set.union(tempset,set)
+											| NONE => Temp.Set.empty
 									val nodeID = Flow.Graph.getNodeID node
 							in
-									M.insert(somemap, nodeID, List.concat(map getLive succList))
+									M.insert(somemap, nodeID, foldl getLive Temp.Set.empty succList)
 							end
 
 						val nodeList = Flow.Graph.nodes control
 						val outMap' = foldl getOut M.empty nodeList
+
+						val outDefMap = M.unionWith Temp.Set.difference (outMap', def)
+						val inMap' = M.unionWith Temp.Set.union (use, outDefMap)
+
 				in
 						if (eqMap(inMap,inMap') andalso eqMap(outMap,outMap')) then
 								(inMap,outMap)
 						else
-								compLiveness(inMap',outMap')
+								(M.map (Temp.Set.app (fn t => print(Temp.makestring(t)^" "))) inMap;
+								 print "\n";
+								compLiveness(inMap',outMap'))
 				end
 
 			val liveOutMap = #2 (compLiveness(M.empty, M.empty))
@@ -67,22 +63,24 @@ fun interferenceGraph (fg as Flow.FLOWGRAPH{control,def,use,ismove}) =
 			(* Create Nodes of Igraph *)
       val nodeID = ref 0
 			val tnode = Temp.Map.empty
-			val templist = concatList(List.concat(M.listItems(use)),List.concat(M.listItems(def)))
+			val usesets = M.foldl Temp.Set.union Temp.Set.empty use
+			val defsets = M.foldl Temp.Set.union Temp.Set.empty def
+			val templist = Temp.Set.union(usesets,defsets)
       fun add_node (t, graph) = (nodeID:=(!nodeID)+1;
 																 Flow.Graph.addNode(graph,!nodeID,t))
-      val igraph = foldl add_node Flow.Graph.empty templist
+      val igraph = Temp.Set.foldl add_node Flow.Graph.empty templist
 
 			(* Make tnode *)
 			val _ = nodeID:=0
 			fun make_tnode (temp, map) = (nodeID:=(!nodeID)+1;
 																		Temp.Map.insert(map,temp,Flow.Graph.getNode(igraph,!nodeID)))
-			val tnode = foldl make_tnode Temp.Map.empty templist
+			val tnode = Temp.Set.foldl make_tnode Temp.Map.empty templist
 
 			(* Make gtemp *)
 			val _ = nodeID:=0
 			fun make_gtemp (t, map) = (nodeID:=(!nodeID)+1;
 																 M.insert(map,!nodeID,t))
-			val gtemp = foldl make_gtemp M.empty templist
+			val gtemp = Temp.Set.foldl make_gtemp M.empty templist
 
 			(* Create Edges of IGraph *)
 			val _ = nodeID:=1
@@ -102,8 +100,8 @@ fun interferenceGraph (fg as Flow.FLOWGRAPH{control,def,use,ismove}) =
 						val liveouts =
 								case M.find(liveOutMap,!nodeID) of
 										SOME(templist) => templist
-									| NONE => []
-						val liveNodes = map temptoNodeID liveouts
+									| NONE => Temp.Set.empty
+						val liveNodes = map temptoNodeID (Temp.Set.listItems liveouts)
 						fun addEdges (graph, x::xs, y::ys) =
 							let
 									fun addEdge (graph, t1, t2::t2s) = addEdge(Flow.Graph.doubleEdge(graph,t1,t2),t1,t2s)
@@ -118,7 +116,7 @@ fun interferenceGraph (fg as Flow.FLOWGRAPH{control,def,use,ismove}) =
 						addEdges(graph,defs,liveNodes))
 				end
 
-			val defNodes = M.map (map temptoNodeID) def
+			val defNodes = M.map (map temptoNodeID) (M.map Temp.Set.listItems def)
 			val igraph' = M.foldl makeEdges igraph defNodes
 
 			fun makeMove (node,list) =
@@ -131,10 +129,10 @@ fun interferenceGraph (fg as Flow.FLOWGRAPH{control,def,use,ismove}) =
 						if isMove then
 								let
 										val temp1 = temptoNode(List.hd(case M.find(def,nodeID) of
-																											 SOME(tlist) => tlist
+																											 SOME(tlist) => Temp.Set.listItems(tlist)
 																										 | NONE => []))
 										val temp2 = temptoNode(List.hd(case M.find(use,nodeID) of
-																											 SOME(tlist) => tlist
+																											 SOME(tlist) => Temp.Set.listItems(tlist)
 																										 | NONE => []))
 								in
 										(temp1,temp2)::list
