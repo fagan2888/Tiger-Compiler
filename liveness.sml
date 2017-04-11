@@ -19,7 +19,7 @@ fun interferenceGraph (fg as Flow.FLOWGRAPH{control,def,use,ismove}) =
 			fun concatList (list1 : Temp.temp list,list2 : Temp.temp list) =
 				let
 						fun removeDups [] = []
-							| removeDups (x::xs) = x::removeDups(List.filter (fn y => y <> x) xs)
+							| removeDups ((x : Temp.temp)::(xs: Temp.temp list)) = x::removeDups(List.filter (fn y => y <> x) xs)
 				in
 						removeDups(list1 @ list2)
 				end
