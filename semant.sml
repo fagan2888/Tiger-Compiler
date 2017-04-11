@@ -86,7 +86,7 @@ struct
                 SOME t => {name=name,escape=escape,ty=t}
                 | _  => (ErrorMsg.error pos ("undefined type: " ^ S.name(typ)); {name=name,escape=escape,ty=T.BOTTOM})
             val params' = map transparam params
-            val label = Temp.newlabel()
+            val label = Temp.namedlabel (S.name name)
             fun determine_escape {name, escape, ty}  = !escape
             val escape = (map determine_escape params')
             val newlevel = R.newLevel{parent=level,name=label,formals=escape}

@@ -104,13 +104,11 @@ struct
         LEVEL({frame=f, parent=p, unique=u}) => f
         | outermost => Frame.newFrame ({name=Temp.newlabel(), formals=[]})
       val pbody = T.MOVE(T.TEMP(Frame.RV), unEx (b))
-      val rbody = T.SEQ[T.LABEL(#name frame),Frame.procEntryExit1(frame, pbody)] (* TODO: function label fix *)
+      val rbody = T.SEQ[T.LABEL(#name frame),Frame.procEntryExit1(frame, pbody)] (* TODO: label name *)
       val frag = Frame.PROC({body=rbody,frame=frame})
     in
       frags := frag::(!frags)
     end
-
-    (* TODO: function label names (not just new labels) *)
 
   fun find_link (TOP,_) = (ErrorMsg.error 0 ("var on outermost level"); T.TEMP(Frame.FP))
     | find_link (_,TOP) = (ErrorMsg.error 0 ("var on outermost level"); T.TEMP(Frame.FP))
