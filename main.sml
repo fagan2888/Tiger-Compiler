@@ -18,7 +18,7 @@ struct
       val fgraph = #1 (Makegraph.instrs2graph (#body instrs''))
 (*      val _ = (Flow.show fgraph) *)
       val igraph = #1 (Liveness.interferenceGraph fgraph)
-(*      val _ = (Liveness.show igraph) *)
+      val _ = (Liveness.show igraph)
       val format0 = Assem.format(Temp.makestring)
     in
       app (fn i => TextIO.output(out,format0 i)) (#body instrs'')

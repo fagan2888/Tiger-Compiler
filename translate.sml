@@ -201,7 +201,7 @@ struct
 	fun recordExp (exps) =
     let
       val r = Temp.newtemp()
-      val init = [T.MOVE(T.TEMP(r),Frame.externalCall("tiger_init_record",[T.CONST(List.length(exps)*Frame.wordsize)]))]
+      val init = [T.MOVE(T.TEMP(r),Frame.externalCall("tiger_init_record",[T.CONST(List.length(exps)*Frame.wordsize)]))] (* TODO: actually implement *)
       fun create_seq (exp, list) = T.MOVE(T.MEM(T.BINOP(T.PLUS,T.TEMP(r),T.CONST((List.length(list)-1)*Frame.wordsize))),unEx(exp))::list
       val rec_seq = foldl create_seq init exps
     in
@@ -214,6 +214,6 @@ struct
 				val size = unEx(exp1);
 				val init = unEx(exp2);
 			in
-				Ex(T.ESEQ(T.SEQ([T.MOVE(T.TEMP(r),Frame.externalCall("tiger_init_array",[size,init]))]),T.TEMP(r)))
+				Ex(T.ESEQ(T.SEQ([T.MOVE(T.TEMP(r),Frame.externalCall("tiger_init_array",[size,init]))]),T.TEMP(r))) (* TODO: actually implement *)
 		end
 end
