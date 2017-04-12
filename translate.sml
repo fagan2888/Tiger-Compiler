@@ -104,16 +104,14 @@ struct
         LEVEL({frame=f, parent=p, unique=u}) => f
         | outermost => Frame.newFrame ({name=Temp.newlabel(), formals=[]})
       val pbody = T.MOVE(T.TEMP(Frame.RV), unEx (b))
-      val rbody = T.SEQ[T.LABEL(#name frame),Frame.procEntryExit1(frame, pbody)] (* TODO: function label fix *)
+      val rbody = Frame.procEntryExit1(frame, pbody)
       val frag = Frame.PROC({body=rbody,frame=frame})
     in
       frags := frag::(!frags)
     end
 
-    (* TODO: function label names (not just new labels) *)
-
-  fun find_link (TOP,_) = (ErrorMsg.error 0 ("var on outermost level"); T.TEMP(Frame.FP))
-    | find_link (_,TOP) = (ErrorMsg.error 0 ("var on outermost level"); T.TEMP(Frame.FP))
+  fun find_link (TOP,_) = T.TEMP(Frame.FP)
+    | find_link (_,TOP) = T.TEMP(Frame.FP)
     | find_link (lvl1 as LEVEL({frame=f1, parent=p1, unique=u1}),LEVEL({frame=f2, parent=p2, unique=u2})) = if u1=u2 then T.TEMP(Frame.FP) else T.MEM(find_link(lvl1, p2))
 
   fun simpleVar ((lvl1, frm), lvl2) = Ex (Frame.exp frm (find_link(lvl1, lvl2)))
@@ -203,7 +201,7 @@ struct
 	fun recordExp (exps) =
     let
       val r = Temp.newtemp()
-      val init = [T.MOVE(T.TEMP(r),Frame.externalCall("tiger_init_record",[T.CONST(List.length(exps)*Frame.wordsize)]))]
+      val init = [T.MOVE(T.TEMP(r),Frame.externalCall("tiger_init_record",[T.CONST(List.length(exps)*Frame.wordsize)]))] (* TODO: actually implement *)
       fun create_seq (exp, list) = T.MOVE(T.MEM(T.BINOP(T.PLUS,T.TEMP(r),T.CONST((List.length(list)-1)*Frame.wordsize))),unEx(exp))::list
       val rec_seq = foldl create_seq init exps
     in
@@ -216,6 +214,6 @@ struct
 				val size = unEx(exp1);
 				val init = unEx(exp2);
 			in
-				Ex(T.ESEQ(T.SEQ([T.MOVE(T.TEMP(r),Frame.externalCall("tiger_init_array",[size,init]))]),T.TEMP(r)))
+				Ex(T.ESEQ(T.SEQ([T.MOVE(T.TEMP(r),Frame.externalCall("tiger_init_array",[size,init]))]),T.TEMP(r))) (* TODO: actually implement *)
 		end
 end

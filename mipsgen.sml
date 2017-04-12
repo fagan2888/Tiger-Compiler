@@ -12,7 +12,7 @@ struct
   structure T = Tree
   fun codegen frame stm =
     let
-      val calldefs = List.nth(F.specialregs,0)::List.nth(F.specialregs,3)::F.callersaves (* $ra, $rv, callersaves *)
+      val calldefs = F.RA::F.RV::F.callersaves (* $ra, $rv, callersaves *)
       val ilist = ref (nil: A.instr list)
       fun emit x = (ilist := x::(!ilist))
       fun result gen = let val t=Temp.newtemp() in gen t; t end
@@ -60,7 +60,8 @@ struct
             val argDst = if (n<4) then List.nth(F.argregs,n) else Temp.newtemp()
             val _ = if (n<4)
                     then emit(A.MOVE{assem="mv $a" ^ Int.toString n ^ ", `s0\n", src=(munchExp arg), dst=argDst})
-                    else emit(A.OPER{assem="sw `s0, " ^ Int.toString (4*(n-4)) ^ "($sp)\n", src=[munchExp (T.TEMP(List.nth(F.specialregs,2))), munchExp arg], dst=[], jump=NONE})
+                    else emit(A.OPER{assem="sw `s0, " ^ Int.toString (4*(n-2)) ^ "(`s1)\n", src=[munchExp arg, F.SP], dst=[], jump=NONE})
+                    (* note: 0($sp) - $ra and 4($sp) - $fp*)
           in
             argDst::munchArgs(n+1,args)
           end
