@@ -108,12 +108,12 @@ struct
                 SOME t => {name=name,ty=t}
                 | _  => (ErrorMsg.error pos ("undefined type: " ^ S.name(typ)); {name=name,ty=T.BOTTOM})
             val params' = map transparam params
-            val access = R.allocLocal level false
-            fun enterparam ({name,ty},venv) = S.enter(venv,name, E.VarEntry{access=access,ty=ty})
-            val venv'' = foldl enterparam venv params'
             val (rt,lvl) = case S.look(venv,name) of
               SOME (E.FunEntry{level=lvl,label=lbl,formals=f,result=return_ty}) => (return_ty,lvl)
               | _ => (ErrorMsg.error pos ("function does not exists: " ^ S.name(name)); (T.BOTTOM,R.outermost))
+            fun enterparam (_, [], venv) = venv
+              | enterparam (n, {name,ty}::list,venv) = enterparam(n+1, list, S.enter(venv,name, E.VarEntry{access=(List.nth((R.formals lvl), n)),ty=ty}))
+            val venv'' = enterparam(0, params', venv)
             val  {exp=exp,ty=body_ty} = transExp(venv'',tenv, break, lvl) body
             val _ = if types_equal (actual_ty (body_ty,pos),actual_ty (rt,pos)) then () else ErrorMsg.error pos ("declared function type and expression do not match")
           in

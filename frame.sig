@@ -9,6 +9,8 @@ sig
 
   val FP : Temp.temp
   val RV : Temp.temp
+  val RA : Temp.temp
+  val SP : Temp.temp
   val wordsize : int
   val exp : access -> Tree.exp -> Tree.exp
   val externalCall : string * Tree.exp list -> Tree.exp

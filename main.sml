@@ -11,14 +11,17 @@ struct
       val stms = Canon.linearize body
 (*         val _ = app (fn s => Printtree.printtree(out,s)) stms; *)
       val stms' = Canon.traceSchedule(Canon.basicBlocks stms)
-      val instrs =   List.concat(map (MipsGen.codegen frame) stms') @ [Assem.OPER{assem="jr $ra\n", src=[],dst=[],jump=NONE}] (* TODO: fix ra after function *)
-      val fgraph = #1 (Makegraph.instrs2graph instrs)
+      val instrs = List.concat(map (MipsGen.codegen frame) stms')
+      val instrs' = F.procEntryExit2 (frame, instrs)
+      val instrs'' = F.procEntryExit3 (frame, instrs')
+      (* TODO: regAlloc *)
+      val fgraph = #1 (Makegraph.instrs2graph (#body instrs''))
 (*      val _ = (Flow.show fgraph) *)
       val igraph = #1 (Liveness.interferenceGraph fgraph)
-      val _ = (Liveness.show igraph)
+(*      val _ = (Liveness.show igraph) *)
       val format0 = Assem.format(Temp.makestring)
     in
-      app (fn i => TextIO.output(out,format0 i)) instrs
+      app (fn i => TextIO.output(out,format0 i)) (#body instrs'')
     end
   | emitproc out (F.STRING(lab,s)) = TextIO.output(out,(S.name lab)^":\n" ^ s ^"\n")
 

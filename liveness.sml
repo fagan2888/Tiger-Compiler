@@ -53,9 +53,7 @@ fun interferenceGraph (fg as Flow.FLOWGRAPH{control,def,use,ismove}) =
 						if (eqMap(inMap,inMap') andalso eqMap(outMap,outMap')) then
 								(inMap,outMap)
 						else
-								(M.map (Temp.Set.app (fn t => print(Temp.makestring(t)^" "))) inMap;
-								 print "\n";
-								compLiveness(inMap',outMap'))
+								compLiveness(inMap',outMap')
 				end
 
 			val liveOutMap = #2 (compLiveness(M.empty, M.empty))
