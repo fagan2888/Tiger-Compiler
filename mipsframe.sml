@@ -84,7 +84,6 @@ val RV = List.nth(specialregs,0)
 val RA = List.nth(specialregs,3)
 val SP = List.nth(specialregs,2)
 
-(* TODO *)
 fun procEntryExit1 ({name,formals,locals},body) = body
 
 fun procEntryExit2 (frame,body) = body @ [Assem.OPER{assem="", src=specialregs @ calleesaves, dst=[],jump=SOME[]}]
@@ -95,20 +94,32 @@ fun procEntryExit3 ({name=name, formals=formals, locals=locals}:frame, body : As
 		val spdown = [A.OPER{assem="addi `d0, `s0, -" ^ (Int.toString (4*(!locals+12))) ^ "\n", src=[SP], dst=[SP], jump=NONE}](* move sp by wordsize*(locals+1ra+1fp+10t)*)
 		val swra = [A.OPER{assem="sw `s1, 0(`s0)\n", src=[SP, RA], dst=[], jump=NONE}] (* sw $ra, 0($sp) *)
 		val swfp = [A.OPER{assem="sw `s1, " ^ (Int.toString wordsize) ^ "(`s0)\n", src=[SP, FP], dst=[], jump=NONE}] (* sw $fp, wordsize($sp) *)
-		(* TODO: sw $t0-t9, 8...48($sp) *)
-		(* TODO: move $a_ to where used: from a0-a3 to temp: move, from a0-a3 to frame: sw, from stack to temp: lw, from stack to frame: lw sw *)
+
+		fun save_tregs (_,[]) = []
+			| save_tregs (n,treg::list) = A.OPER{assem="sw `s1, " ^ (Int.toString (8+4*(!locals+n))) ^ "(`s0)\n", src=[SP, treg], dst=[], jump=NONE}::save_tregs (n+1,list)
+		val scallee = save_tregs (0, callersaves) (* sw $t0-t9, 8+4*locals...48+4*locals($sp) *)
+
 		fun arg_reg (_,[]) = []
-			| arg_reg (n, (InReg(temp)::list)) = A.OPER{assem="mv `s0, $a" ^ (Int.toString n) ^ "\n", src=[temp], dst=[], jump=NONE}::arg_reg(n+1,list)
-			| arg_reg (n, (InFrame(num)::list)) = arg_reg(n+1,list) (* TODO *)
+			| arg_reg (n, (InReg(temp)::list)) = if n<4
+				then A.OPER{assem="mv `d0, $a" ^ (Int.toString n) ^ "\n", src=[], dst=[temp], jump=NONE}::arg_reg(n+1,list) (* from a0-a3 to temp: move *)
+				else A.OPER{assem="lw `d0, " ^ (Int.toString (8+4*(n-4))) ^ "(`s0)\n", src=[FP], dst=[temp], jump=NONE}::arg_reg(n+1,list) (* from a0-a3 to frame *)
+			| arg_reg (n, (InFrame(num)::list)) = arg_reg(n+1,list) (* TODO : from stack to frame: lw sw *)
 		val args = arg_reg(0,formals)
+
 		(* body - see below *)
+
 		val lwra = [A.OPER{assem="lw `d0, 0(`s0)\n", src=[SP], dst=[RA], jump=NONE}] (* lw $ra, 0($sp) *)
 		val lwfp = [A.OPER{assem="lw `d0, " ^ (Int.toString wordsize) ^ "(`s0)\n", src=[SP], dst=[FP], jump=NONE}] (* lw $fp, wordsize($sp) *)
-		(* TODO: lw $t0-t9, x($sp) *)
+
+		fun load_tregs (_,[]) = []
+			| load_tregs (n,treg::list) = A.OPER{assem="lw `d0, " ^ (Int.toString (8+4*(!locals+n))) ^ "(`s0)\n", src=[SP], dst=[treg], jump=NONE}::load_tregs (n+1,list)
+		val lcallee = load_tregs (0, callersaves) (* lw $t0-t9, 8+4*locals...48+4*locals($sp) *)
+
 		(* TODO: move v_ into used regs *)
+
 		val spup = [A.OPER{assem="addi `d0, `s0, " ^ (Int.toString (4*(!locals+12))) ^ "\n", src=[SP], dst=[SP], jump=NONE}] (* move sp by wordsize*(locals+1ra+1fp+8s)*)
-		val jrra = [Assem.OPER{assem="jr `d0\n", src=calleesaves,dst=[RA],jump=NONE}] (* jr $ra *)
-		val body' = if Symbol.name name="tiger_main" then lab @ body @ jrra else lab @ spdown @ swra @ swfp @ args @ body @ lwra @ lwfp @ spup @ jrra
+		val jrra = [Assem.OPER{assem="jr `d0\n", src=[],dst=[RA],jump=NONE}] (* jr $ra *)
+		val body' = if Symbol.name name="tiger_main" then lab @ body @ jrra else lab @ spdown @ swra @ swfp @ scallee @ args @ body @ lwra @ lwfp @ lcallee @ spup @ jrra
 	in
 		{prolog = "PROCEDURE " ^ Symbol.name name ^ "\n", body = body', epilog = "END " ^ Symbol.name name ^ "\n"}
 	end
