@@ -13,13 +13,9 @@ struct
       val stms' = Canon.traceSchedule(Canon.basicBlocks stms)
       val instrs = List.concat(map (MipsGen.codegen frame) stms')
       val instrs' = F.procEntryExit2 (frame, instrs)
+      val allocation = Reg_Alloc.alloc instrs'
       val instrs'' = F.procEntryExit3 (frame, instrs')
-      (* TODO: regAlloc *)
-      val fgraph = #1 (Makegraph.instrs2graph (#body instrs''))
-(*      val _ = (Flow.show fgraph) *)
-      val igraph = #1 (Liveness.interferenceGraph fgraph)
-      val _ = (Liveness.show igraph)
-      val format0 = Assem.format(Temp.makestring)
+      val format0 = Assem.format(fn (temp) => case Temp.Map.find(allocation,temp) of SOME str => ("$" ^ str) | NONE => ("$ERROR"))
     in
       app (fn i => TextIO.output(out,format0 i)) (#body instrs'')
     end

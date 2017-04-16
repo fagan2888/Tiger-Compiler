@@ -22,6 +22,7 @@ sig
   val argregs : Temp.temp list
   val calleesaves : Temp.temp list
   val callersaves : Temp.temp list
+  val registers : register list
 
   val procEntryExit1 : frame * Tree.stm -> Tree.stm
   val procEntryExit2 : frame * Assem.instr list -> Assem.instr list

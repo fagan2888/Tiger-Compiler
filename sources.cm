@@ -26,6 +26,8 @@ funcgraph.sml
 mipsgen.sml
 makegraph.sml
 liveness.sml
+regalloc.sml
+color.sml
 main.sml
 $/smlnj-lib.cm
 $/ml-yacc-lib.cm

@@ -50,34 +50,22 @@ fun externalCall (s,args) =
 
 type register = string
 
-val tempMap = Temp.Map.empty
+fun makeRegs 0 = []
+	| makeRegs n = Temp.newtemp()::makeRegs(n-1)
+
+val specialregs = makeRegs(5) (* $rv,$fp,$sp,$ra,$0 *)
+val argregs = makeRegs(4) (* $a0-$a3 *)
+val calleesaves = makeRegs(8) (* $s0-$s7 *)
+val callersaves = makeRegs (10) (* $t0-$t9 *)
+val registers = ["rv","fp","sp","ra","0","a0","a1","a2","a3","s0","s1","s2","s3","s4","s5","s6","s7","t0","t1","t2","t3","t4","t5","t6","t7","t8","t9"]
+
+fun make_temp_map ((temp,name), map) = Temp.Map.insert(map,temp,name)
+val tempMap = foldl make_temp_map Temp.Map.empty (ListPair.zip(specialregs@argregs@calleesaves@callersaves,registers))
 
 fun tempString temp =
 	case Temp.Map.find(tempMap,temp) of
 			SOME(register) => register
 		| NONE => Temp.makestring temp
-
-fun makeRegs (0,[]) = []
-	| makeRegs (n,(name::names)) =
-		let
-				val r = Temp.newtemp();
-		in
-				Temp.Map.insert(tempMap,r,name);
-				r::(makeRegs(n-1, names))
-		end
-	| makeRegs (n,[]) =
-		let
-				val r = Temp.newtemp();
-		in
-				Temp.Map.insert(tempMap,r,NONE);
-				r::(makeRegs(n-1,[]))
-		end
-
-
-val specialregs = makeRegs(5,["rv":register,"fp":register,"sp":register,"ra":register,"r0":register]) (* $rv,$fp,$sp,$ra,$0 *)
-val argregs = makeRegs(4,[]) (* $a0-$a3 *)
-val calleesaves = makeRegs(8,[]) (* $s0-$s7 *)
-val callersaves = makeRegs (10,[]) (* $t0-$t9 *)
 
 val FP = List.nth(specialregs,1)
 val RV = List.nth(specialregs,0)
@@ -101,7 +89,7 @@ fun procEntryExit3 ({name=name, formals=formals, locals=locals}:frame, body : As
 
 		fun arg_reg (_,[]) = []
 			| arg_reg (n, (InReg(temp)::list)) = if n<4
-				then A.OPER{assem="mv `d0, $a" ^ (Int.toString n) ^ "\n", src=[], dst=[temp], jump=NONE}::arg_reg(n+1,list) (* from a0-a3 to temp: move *)
+				then A.OPER{assem="mv `d0, `s0\n", src=[List.nth(argregs,n)], dst=[temp], jump=NONE}::arg_reg(n+1,list) (* from a0-a3 to temp: move *)
 				else A.OPER{assem="lw `d0, " ^ (Int.toString (8+4*(n-4))) ^ "(`s0)\n", src=[FP], dst=[temp], jump=NONE}::arg_reg(n+1,list) (* from a0-a3 to frame *)
 			| arg_reg (n, (InFrame(num)::list)) = arg_reg(n+1,list) (* TODO : from stack to frame: lw sw *)
 		val args = arg_reg(0,formals)
