@@ -1,6 +1,9 @@
 signature LIVENESS =
 sig
-  type igraph
+  datatype igraph = IGRAPH of {graph: Temp.temp Flow.Graph.graph,
+  												 tnode: Temp.temp Flow.Graph.node Temp.Map.map,
+  												 gtemp: Temp.temp M.map,
+  												 moves: (Temp.temp Flow.Graph.node * Temp.temp Flow.Graph.node) list}
   val interferenceGraph : Flow.flowgraph -> igraph * (Temp.Set.set M.map)
   val show : igraph -> unit
 end
