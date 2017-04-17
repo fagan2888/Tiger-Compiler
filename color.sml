@@ -2,10 +2,7 @@ signature COLOR =
 sig
   structure Frame : FRAME
   type allocation = Frame.register Temp.Map.map
-  val color : {interference: Liveness.igraph,
-              initial: allocation,
-              registers: Frame.register list}
-              -> allocation * Temp.temp list
+  val color : {interference: Liveness.igraph, initial: allocation, registers: Frame.register list} -> allocation * Temp.temp list
 end
 
 structure Color : COLOR =
@@ -32,11 +29,12 @@ struct
           removeNode (Flow.Graph.nodes graph)
         end
 
-      (* Add all nodes non-precolored nodes to stack or spilled arrays *)
+      (* Add all nodes non-precolored nodes to stack (even if spilling) *)
       fun createStack (graph, stack) = case simplify graph of
         (graphsi, SOME(nodesi)) => createStack (graphsi, nodesi::stack)
         | (_, NONE) => (case spill graph of (graphsp, SOME(nodesp)) => createStack (graphsp, nodesp::stack) | (_, NONE) => stack)
 
+      (* pops stack and chooses color for node (different color than neighbors) *)
       fun createColors (map, [], spills) = (map,spills)
         | createColors (map, node::stack, spills) =
         let
