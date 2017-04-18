@@ -50,7 +50,7 @@ struct
         | munchExp (T.BINOP(T.ARSHIFT,e1,e2)) = result(fn r => emit(A.OPER{assem="srav `d0, `s0, `s1\n", src=[munchExp e1, munchExp e2], dst=[r], jump=NONE}))
         | munchExp (T.ESEQ(s,e)) = (munchStm s; munchExp e)
         | munchExp (T.NAME(lab)) = result(fn r => emit(A.OPER{assem="la `d0, " ^ (S.name lab) ^ "\n", src=[], dst=[r], jump=NONE}))
-        | munchExp (T.CALL(T.NAME(lab),args)) = result(fn r => emit(A.OPER{assem="jal " ^ (S.name lab) ^"\n", src=munchArgs(0,args), dst=calldefs, jump=NONE}))
+        | munchExp (T.CALL(T.NAME(lab),args)) = result(fn r => (emit(A.OPER{assem="jal " ^ (S.name lab) ^"\n", src=munchArgs(0,args), dst=calldefs, jump=NONE}); emit(A.MOVE{assem="mv `d0, `s0\n", src=F.RV, dst=r})))
         | munchExp (T.CALL(e,elist)) = result(fn r => emit(A.OPER{assem="", src=[], dst=[], jump=NONE}))
         | munchExp (T.TEMP t) = t
 

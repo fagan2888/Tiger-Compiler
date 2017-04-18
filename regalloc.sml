@@ -17,6 +17,7 @@ struct
       (* val _ = (Liveness.show igraph) *)
       val (allocation, spills) = Color.color {interference=igraph, initial=Frame.tempMap, registers=Frame.registers}
       (* TODO: what about spills *)
+      val _ = if List.length(spills)>0 then ErrorMsg.error 0 ("register allocaiton spill") else ()
     in
       allocation
     end
