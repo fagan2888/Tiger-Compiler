@@ -19,15 +19,15 @@ struct
   val base_tenv = foldl insert Symbol.empty [("int",Types.INT),("string",Types.STRING)]
   val base_venv =
     let
-      val functions = [("print", FunEntry({level=Translate.outermost,label=Temp.namedlabel("tiger_print"),formals=[Types.STRING],result=Types.UNIT})),
-                       ("flush",FunEntry({level=Translate.outermost,label=Temp.namedlabel("tiger_flush"),formals=[],result=Types.UNIT})),
-                       ("getchar",FunEntry({level=Translate.outermost,label=Temp.namedlabel("tiger_getchar"),formals=[],result=Types.STRING})),
-                       ("ord",FunEntry({level=Translate.outermost,label=Temp.namedlabel("tiger_ord"),formals=[Types.STRING],result=Types.INT})),
-                       ("chr",FunEntry({level=Translate.outermost,label=Temp.namedlabel("tiger_chr"),formals=[Types.INT],result=Types.STRING})),
-                       ("size",FunEntry({level=Translate.outermost,label=Temp.namedlabel("tiger_size"),formals=[Types.STRING],result=Types.INT})),
-                       ("substring",FunEntry({level=Translate.outermost,label=Temp.namedlabel("tiger_substring"),formals=[Types.STRING,Types.INT,Types.INT],result=Types.STRING})),
-                       ("concat",FunEntry({level=Translate.outermost,label=Temp.namedlabel("tiger_concat"),formals=[Types.STRING,Types.STRING],result=Types.STRING})),
-                       ("not",FunEntry({level=Translate.outermost,label=Temp.namedlabel("tiger_not"),formals=[Types.INT],result=Types.INT})),
+      val functions = [("print", FunEntry({level=Translate.outermost,label=Temp.namedlabel("print"),formals=[Types.STRING],result=Types.UNIT})),
+                       ("flush",FunEntry({level=Translate.outermost,label=Temp.namedlabel("flush"),formals=[],result=Types.UNIT})),
+                       ("getchar",FunEntry({level=Translate.outermost,label=Temp.namedlabel("getchar"),formals=[],result=Types.STRING})),
+                       ("ord",FunEntry({level=Translate.outermost,label=Temp.namedlabel("ord"),formals=[Types.STRING],result=Types.INT})),
+                       ("chr",FunEntry({level=Translate.outermost,label=Temp.namedlabel("chr"),formals=[Types.INT],result=Types.STRING})),
+                       ("size",FunEntry({level=Translate.outermost,label=Temp.namedlabel("size"),formals=[Types.STRING],result=Types.INT})),
+                       ("substring",FunEntry({level=Translate.outermost,label=Temp.namedlabel("substring"),formals=[Types.STRING,Types.INT,Types.INT],result=Types.STRING})),
+                       ("concat",FunEntry({level=Translate.outermost,label=Temp.namedlabel("concat"),formals=[Types.STRING,Types.STRING],result=Types.STRING})),
+                       ("not",FunEntry({level=Translate.outermost,label=Temp.namedlabel("not"),formals=[Types.INT],result=Types.INT})),
                        ("exit",FunEntry({level=Translate.outermost,label=Temp.namedlabel("tiger_exit"),formals=[Types.INT],result=Types.UNIT}))]
     in
       foldl insert Symbol.empty functions
