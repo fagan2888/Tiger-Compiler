@@ -16,7 +16,7 @@ struct
       val igraph = #1 (Liveness.interferenceGraph fgraph)
       (* val _ = (Liveness.show igraph) *)
       val (allocation, spills) = Color.color {interference=igraph, initial=Frame.tempMap, registers=Frame.registers}
-      (* TODO: what about spills *)
+      (* return error if spill *)
       val _ = if List.length(spills)>0 then ErrorMsg.error 0 ("register allocation spill") else ()
     in
       allocation

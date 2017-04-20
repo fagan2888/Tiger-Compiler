@@ -76,22 +76,30 @@ fun procEntryExit1 ({name,formals,locals},body) = body
 
 fun procEntryExit2 ({name,formals,locals},body) =
 	let
-		fun arg_reg (_,[],_) = []
-			| arg_reg (n, (InReg(temp)::list),f) = if n<4
-				then A.OPER{assem="mv `d0, `s0\n", src=[List.nth(argregs,n)], dst=[temp], jump=NONE}::arg_reg(n+1,list,f) (* from a0-a3 to temp: move *)
-				else A.OPER{assem="lw `d0, " ^ (Int.toString (8+4*(n-4))) ^ "(`s0)\n", src=[FP], dst=[temp], jump=NONE}::arg_reg(n+1,list,f) (* from a0-a3 to frame *)
-			| arg_reg (n, (InFrame(num)::list), f) = arg_reg(n+1,list,f+1) (* TODO: from stack to frame: lw sw *)
-				(*
-				let
-					val r = Temp.newtemp()
-					val offset = if n=0 then 8 else 8
-					val lw = A.OPER{assem="lw `d0, -" ^ (Int.toString (0-num)) ^ "(`s0)\n", src=[SP], dst=[r], jump=NONE}
-					val sw = A.OPER{assem="sw `s1, " ^ (Int.toString offset) ^ "(`s0)\n", src=[SP, r], dst=[], jump=NONE}
-				in
-					lw::sw::arg_reg(n+1,list,f+1)
-				end
-				*)
-		val args = arg_reg(0,formals,0)
+		val frameoff = ref 8
+		fun arg_reg (_,[]) = []
+			| arg_reg (n, (InReg(temp)::list)) = if n<4
+				then A.OPER{assem="mv `d0, `s0\n", src=[List.nth(argregs,n)], dst=[temp], jump=NONE}::arg_reg(n+1,list) (* from a0-a3 to temp: move *)
+				else A.OPER{assem="lw `d0, " ^ (Int.toString (8+4*(!locals+n-4))) ^ "(`s0)\n", src=[FP], dst=[temp], jump=NONE}::arg_reg(n+1,list) (* from a0-a3 to frame *)
+			| arg_reg (n, (InFrame(num)::list)) =
+				if n<4
+				then (* from a0-a3 to frame: sw *)
+				  let
+						val sw = A.OPER{assem="sw `s1, " ^ (Int.toString (!frameoff)) ^ "(`s0)\n", src=[SP, List.nth(argregs,n)], dst=[], jump=NONE}
+						val _ = frameoff := !frameoff+4;
+				  in
+						if Symbol.name name="main" then arg_reg(n+1,list) else sw::arg_reg(n+1,list)
+				  end
+				else (* from stack to frame: lw sw *)
+					let
+						val r = Temp.newtemp()
+						val lw = A.OPER{assem="lw `d0, -" ^ (Int.toString (0-num)) ^ "(`s0)\n", src=[SP], dst=[r], jump=NONE}
+						val sw = A.OPER{assem="sw `s1, " ^ (Int.toString (!frameoff)) ^ "(`s0)\n", src=[SP, r], dst=[], jump=NONE}
+						val _ = frameoff := !frameoff+4;
+					in
+						if Symbol.name name="main" then arg_reg(n+1,list) else lw::sw::arg_reg(n+1,list)
+					end
+		val args = arg_reg(0,formals)
 	in
 		args @ body @ [Assem.OPER{assem="", src=specialregs @ calleesaves, dst=[],jump=SOME[]}]
 	end
