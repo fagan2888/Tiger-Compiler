@@ -147,7 +147,7 @@ struct
         let
           val  {exp=exp,ty=ty} = transExp (venv,tenv,break,level) init
           val access = R.allocLocal level (!escape)
-          val new_expseq = (R.assignExp(R.simpleVar(access, level),exp))::expseq
+          val new_expseq = expseq @ [(R.assignExp(R.simpleVar(access, level),exp))]
         in
           ((case typ of
               SOME (sym,p) => if types_equal (actual_ty ((get_type (tenv,sym,p)),p),actual_ty (ty,pos)) then () else ErrorMsg.error pos ("declared type " ^ (T.name (get_type (tenv,sym,p))) ^ " and expression " ^ (T.name ty) ^" do not match")
