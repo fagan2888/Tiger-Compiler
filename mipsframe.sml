@@ -80,7 +80,7 @@ fun procEntryExit2 ({name,formals,locals},body) =
 		fun arg_reg (_,[]) = []
 			| arg_reg (n, (InReg(temp)::list)) = if n<4
 				then A.OPER{assem="mv `d0, `s0\n", src=[List.nth(argregs,n)], dst=[temp], jump=NONE}::arg_reg(n+1,list) (* from a0-a3 to temp: move *)
-				else A.OPER{assem="lw `d0, " ^ (Int.toString (8+4*(!locals+n-4))) ^ "(`s0)\n", src=[FP], dst=[temp], jump=NONE}::arg_reg(n+1,list) (* from a0-a3 to frame *)
+				else A.OPER{assem="lw `d0, " ^ (Int.toString (8+4*(!locals+n-4))) ^ "(`s0)\n", src=[FP], dst=[temp], jump=NONE}::arg_reg(n+1,list) (* from stack to temp : lw *)
 			| arg_reg (n, (InFrame(num)::list)) =
 				if n<4
 				then (* from a0-a3 to frame: sw *)
@@ -93,7 +93,7 @@ fun procEntryExit2 ({name,formals,locals},body) =
 				else (* from stack to frame: lw sw *)
 					let
 						val r = Temp.newtemp()
-						val lw = A.OPER{assem="lw `d0, -" ^ (Int.toString (0-num)) ^ "(`s0)\n", src=[SP], dst=[r], jump=NONE}
+						val lw = A.OPER{assem="lw `d0, " ^ (Int.toString (0-num)) ^ "(`s0)\n", src=[FP], dst=[r], jump=NONE}
 						val sw = A.OPER{assem="sw `s1, " ^ (Int.toString (!frameoff)) ^ "(`s0)\n", src=[SP, r], dst=[], jump=NONE}
 						val _ = frameoff := !frameoff+4;
 					in
