@@ -33,6 +33,19 @@ struct
       (f out before TextIO.closeOut out) handle e => (TextIO.closeOut out; raise e)
     end
 
+	fun copyFile (infile,outfile) =
+		let
+				val ins = TextIO.openIn infile
+				val outs = TextIO.openAppend outfile
+				fun helper(copt:char option) =
+					case copt of
+							NONE => (TextIO.closeIn ins; TextIO.closeOut outs)
+					 |  SOME(c) => (TextIO.output1(outs,c); helper(TextIO.input1 ins))
+		in
+				helper(TextIO.input1 ins)
+		end
+
+
   fun compile filename =
     let
       val _ = Translate.resetFrags()
@@ -41,7 +54,9 @@ struct
       val frags = Semant.transProg(ast)
       (* val _ = if (!ErrorMsg.anyErrors) then () else (print_frags frags) *)
     in
-      withOpenFile (filename ^ ".s") (fn out => (app (emitproc out) frags))
+				withOpenFile (filename ^ ".s") (fn out => (app (emitproc out) frags));
+				copyFile ("runtimele.s",filename^".s");
+				copyFile ("sysspim.s",filename^".s")
     end
 
 end

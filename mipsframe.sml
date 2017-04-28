@@ -57,7 +57,7 @@ val specialregs = makeRegs(5) (* $rv,$fp,$sp,$ra,$0 *)
 val argregs = makeRegs(4) (* $a0-$a3 *)
 val calleesaves = makeRegs(8) (* $s0-$s7 *)
 val callersaves = makeRegs (10) (* $t0-$t9 *)
-val registers = ["v1","fp","sp","ra","0","a0","a1","a2","a3","s0","s1","s2","s3","s4","s5","s6","s7","t0","t1","t2","t3","t4","t5","t6","t7","t8","t9"]
+val registers = ["v0","fp","sp","ra","0","a0","a1","a2","a3","s0","s1","s2","s3","s4","s5","s6","s7","t0","t1","t2","t3","t4","t5","t6","t7","t8","t9"]
 
 fun make_temp_map ((temp,name), map) = Temp.Map.insert(map,temp,name)
 val tempMap = foldl make_temp_map Temp.Map.empty (ListPair.zip(specialregs@argregs@calleesaves@callersaves,registers))
@@ -79,7 +79,7 @@ fun procEntryExit2 ({name,formals,locals},body) =
 		val frameoff = ref 8
 		fun arg_reg (_,[]) = []
 			| arg_reg (n, (InReg(temp)::list)) = if n<4
-				then A.OPER{assem="mv `d0, `s0\n", src=[List.nth(argregs,n)], dst=[temp], jump=NONE}::arg_reg(n+1,list) (* from a0-a3 to temp: move *)
+				then A.OPER{assem="move `d0, `s0\n", src=[List.nth(argregs,n)], dst=[temp], jump=NONE}::arg_reg(n+1,list) (* from a0-a3 to temp: move *)
 				else A.OPER{assem="lw `d0, " ^ (Int.toString (8+4*(!locals+n-4))) ^ "(`s0)\n", src=[FP], dst=[temp], jump=NONE}::arg_reg(n+1,list) (* from stack to temp : lw *)
 			| arg_reg (n, (InFrame(num)::list)) =
 				if n<4

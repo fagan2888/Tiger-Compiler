@@ -370,7 +370,7 @@ struct
 
   fun transProg exp =
     let
-      val main_label = Temp.namedlabel("main")
+      val main_label = Temp.namedlabel("tig_main")
       val level = R.newLevel{parent=R.outermost,name=main_label,formals=[]}
       val expty = (transExp (E.base_venv, E.base_tenv, main_label, level) exp)
       val _ = R.procEntryExit {level=level, body=(#exp expty)}
