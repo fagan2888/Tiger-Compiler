@@ -122,7 +122,7 @@ struct
 				val ind = unEx exp;
         (* TODO: check bounds *)
 		in
-				Ex(T.MEM(T.BINOP(T.PLUS,T.MEM(var),T.BINOP(T.MUL,ind,T.CONST(Frame.wordsize)))))
+				Ex(T.MEM(T.BINOP(T.PLUS,(var),T.BINOP(T.MUL,ind,T.CONST(Frame.wordsize)))))
 		end
 
 	fun fieldVar (v,num) = Ex(T.MEM(T.BINOP(T.PLUS,T.MEM(unEx v),T.CONST(num*Frame.wordsize))))

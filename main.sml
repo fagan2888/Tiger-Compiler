@@ -19,7 +19,7 @@ struct
     in
       app (fn i => TextIO.output(out,format0 i)) (#body instrs'')
     end
-  | emitproc out (F.STRING(lab,s)) = TextIO.output(out,(S.name lab)^":\n" ^ s ^"\n")
+  | emitproc out (F.STRING(lab,s)) = TextIO.output(out,(S.name lab)^":\n" ^ ".asciiz \"" ^ s ^"\"\n")
 
   fun print_frags [] = ()
     | print_frags (frag::frags) = (case frag of
@@ -28,15 +28,16 @@ struct
 
   fun withOpenFile fname f =
     let
-      val out = TextIO.openOut fname
+      val out = TextIO.openAppend fname
     in
       (f out before TextIO.closeOut out) handle e => (TextIO.closeOut out; raise e)
     end
 
-	fun copyFile (infile,outfile) =
+	fun copyFile (infile,outfile,append) =
 		let
 				val ins = TextIO.openIn infile
-				val outs = TextIO.openAppend outfile
+				val outs = if append then TextIO.openAppend outfile else TextIO.openOut outfile
+
 				fun helper(copt:char option) =
 					case copt of
 							NONE => (TextIO.closeIn ins; TextIO.closeOut outs)
@@ -54,9 +55,9 @@ struct
       val frags = Semant.transProg(ast)
       (* val _ = if (!ErrorMsg.anyErrors) then () else (print_frags frags) *)
     in
-				withOpenFile (filename ^ ".s") (fn out => (app (emitproc out) frags));
-				copyFile ("runtimele.s",filename^".s");
-				copyFile ("sysspim.s",filename^".s")
+				copyFile ("runtimele.s",filename^".s",false);
+				copyFile ("sysspim.s",filename^".s",true);
+				withOpenFile (filename ^ ".s") (fn out => (app (emitproc out) frags))
     end
 
 end
