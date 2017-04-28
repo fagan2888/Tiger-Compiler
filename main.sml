@@ -17,7 +17,8 @@ struct
       val instrs'' = F.procEntryExit3 (frame, instrs')
       val format0 = Assem.format(fn (temp) => case Temp.Map.find(allocation,temp) of SOME str => ("$" ^ str) | NONE => ("$ERROR"))
     in
-      app (fn i => TextIO.output(out,format0 i)) (#body instrs'')
+				app (fn i => TextIO.output(out,format0 i)) (#body instrs'');
+				TextIO.output(out,".data\n")
     end
   | emitproc out (F.STRING(lab,s)) = TextIO.output(out,(S.name lab)^":\n" ^ ".asciiz \"" ^ s ^"\"\n")
 

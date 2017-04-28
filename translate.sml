@@ -125,7 +125,7 @@ struct
 				Ex(T.MEM(T.BINOP(T.PLUS,(var),T.BINOP(T.MUL,ind,T.CONST(Frame.wordsize)))))
 		end
 
-	fun fieldVar (v,num) = Ex(T.MEM(T.BINOP(T.PLUS,T.MEM(unEx v),T.CONST(num*Frame.wordsize))))
+	fun fieldVar (v,num) = Ex(T.MEM(T.BINOP(T.PLUS,(unEx v),T.CONST((num-1)*Frame.wordsize))))
 
   fun nilExp () = Ex (T.CONST (0))
   fun intExp (num) = Ex (T.CONST (num))
@@ -202,7 +202,7 @@ struct
     let
       val r = Temp.newtemp()
       val init = [T.MOVE(T.TEMP(r),Frame.externalCall("tig_allocRecord",[T.CONST(List.length(exps)*Frame.wordsize)]))]
-      fun create_seq (exp, list) = T.MOVE(T.MEM(T.BINOP(T.PLUS,T.TEMP(r),T.CONST((List.length(list)-1)*Frame.wordsize))),unEx(exp))::list
+      fun create_seq (exp, list) = list @ [T.MOVE(T.MEM(T.BINOP(T.PLUS,T.TEMP(r),T.CONST((List.length(list)-1)*Frame.wordsize))),unEx(exp))]
       val rec_seq = foldl create_seq init exps
     in
       Ex(T.ESEQ(T.SEQ(rec_seq),T.TEMP(r)))
