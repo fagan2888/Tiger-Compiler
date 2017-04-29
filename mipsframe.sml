@@ -101,7 +101,7 @@ fun procEntryExit2 ({name,formals,locals},body) =
 					end
 		val args = arg_reg(0,formals)
 	in
-		args @ body @ [Assem.OPER{assem="", src=specialregs @ calleesaves, dst=[],jump=SOME[]}]
+		args @ body @ [Assem.OPER{assem="", src=specialregs @ argregs, dst=[],jump=SOME[]}]
 	end
 
 fun procEntryExit3 ({name=name, formals=formals, locals=locals}:frame, body : Assem.instr list) =

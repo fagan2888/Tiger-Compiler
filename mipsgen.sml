@@ -12,7 +12,7 @@ struct
   structure T = Tree
   fun codegen frame stm =
     let
-      val calldefs = F.RA::F.RV::F.callersaves (* $ra, $rv, callersaves *)
+      val calldefs = F.RA::F.RV::[] (* $ra, $rv *)
       val ilist = ref (nil: A.instr list)
       fun emit x = (ilist := x::(!ilist))
       fun result gen = let val t=Temp.newtemp() in gen t; t end
