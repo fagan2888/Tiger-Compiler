@@ -107,6 +107,7 @@ fun procEntryExit2 ({name,formals,locals},body) =
 fun procEntryExit3 ({name=name, formals=formals, locals=locals}:frame, body : Assem.instr list) =
 	let
 		val lab = [A.LABEL{assem=(Symbol.name name) ^ ":\n", lab=name}] (* method label *)
+		val fpsp = [A.OPER{assem="addi `d0, `s0, 0\n", src=[SP], dst=[FP], jump=NONE}]
 		val spdown = [A.OPER{assem="addi `d0, `s0, -" ^ (Int.toString (4*(!locals+20))) ^ "\n", src=[SP], dst=[SP], jump=NONE}](* move sp by wordsize*(locals+1ra+1fp+10t+8s)*)
 		val swra = [A.OPER{assem="sw `s1, 0(`s0)\n", src=[SP, RA], dst=[], jump=NONE}] (* sw $ra, 0($sp) *)
 		val swfp = [A.OPER{assem="sw `s1, " ^ (Int.toString wordsize) ^ "(`s0)\n", src=[SP, FP], dst=[], jump=NONE}] (* sw $fp, wordsize($sp) *)
@@ -134,7 +135,7 @@ fun procEntryExit3 ({name=name, formals=formals, locals=locals}:frame, body : As
 
 		val spup = [A.OPER{assem="addi `d0, `s0, " ^ (Int.toString (4*(!locals+20))) ^ "\n", src=[SP], dst=[SP], jump=NONE}] (* move sp by wordsize*(locals+1ra+1fp++10t8s)*)
 		val jrra = [Assem.OPER{assem="jr `d0\n", src=[],dst=[RA],jump=NONE}] (* jr $ra *)
-		val body' = if Symbol.name name="tig_main" then lab @ body @ jrra else lab @ spdown @ swra @ swfp @ scaller @ scallee @ body @ lwra @ lwfp @ lcaller @ lcallee @ spup @ jrra
+		val body' = if Symbol.name name="tig_main" then lab @ body @ jrra else lab @ fpsp @ spdown @ swra @ swfp @ scaller @ scallee @ body @ lwra @ lwfp @ lcaller @ lcallee @ spup @ jrra
 	in
 		{prolog = "PROCEDURE " ^ Symbol.name name ^ "\n", body = body', epilog = "END " ^ Symbol.name name ^ "\n"}
 	end

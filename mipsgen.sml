@@ -32,7 +32,7 @@ struct
         | munchStm (T.CJUMP(relop,e1,e2,l1,l2)) = emit(A.OPER{assem=T.relString(relop) ^ " `s0, `s1, " ^ (S.name l1) ^ "\n", src=[munchExp e1, munchExp e2], dst=[], jump=SOME[l1,l2]})
         | munchStm (T.EXP(e)) = (munchExp e; ())
 
-      and munchExp (T.MEM(T.BINOP(T.PLUS, e1, T.CONST i))) = result(fn r => emit(A.OPER{assem="lw `d0, " ^ (Int.toString i) ^ "(`s0)\n", src=[munchExp e1], dst=[r], jump=NONE}))
+      and munchExp (T.MEM(T.BINOP(T.PLUS, e1, T.CONST i))) = result(fn r => emit(A.OPER{assem="lw `d0, " ^ (Int.toString (Int.abs i)) ^ "(`s0)\n", src=[munchExp e1], dst=[r], jump=NONE}))
         | munchExp (T.MEM(T.BINOP(T.PLUS, T.CONST i, e1))) = result(fn r => emit(A.OPER{assem="lw `d0, " ^ (Int.toString i) ^ "(`s0)\n", src=[munchExp e1], dst=[r], jump=NONE}))
         | munchExp (T.MEM(e1)) = result(fn r => emit(A.OPER{assem="lw `d0, 0(`s0)\n", src=[munchExp e1], dst=[r], jump=NONE}))
         | munchExp (T.BINOP(T.PLUS, e1, T.CONST i)) = result(fn r => emit(A.OPER{assem="addi `d0, `s0, " ^ (Int.toString i) ^ "\n", src=[munchExp e1], dst=[r], jump=NONE}))
