@@ -88,7 +88,7 @@ fun procEntryExit2 ({name,formals,locals},body) =
 						val sw = A.OPER{assem="sw `s1, " ^ (Int.toString (!frameoff)) ^ "(`s0)\n", src=[SP, List.nth(argregs,n)], dst=[], jump=NONE}
 						val _ = frameoff := !frameoff+4;
 				  in
-						if Symbol.name name="main" then arg_reg(n+1,list) else sw::arg_reg(n+1,list)
+						if Symbol.name name="tig_main" then arg_reg(n+1,list) else sw::arg_reg(n+1,list)
 				  end
 				else (* from stack to frame: lw sw *)
 					let
@@ -97,7 +97,7 @@ fun procEntryExit2 ({name,formals,locals},body) =
 						val sw = A.OPER{assem="sw `s1, " ^ (Int.toString (!frameoff)) ^ "(`s0)\n", src=[SP, r], dst=[], jump=NONE}
 						val _ = frameoff := !frameoff+4;
 					in
-						if Symbol.name name="main" then arg_reg(n+1,list) else lw::sw::arg_reg(n+1,list)
+						if Symbol.name name="tig_main" then arg_reg(n+1,list) else lw::sw::arg_reg(n+1,list)
 					end
 		val args = arg_reg(0,formals)
 	in
@@ -107,13 +107,17 @@ fun procEntryExit2 ({name,formals,locals},body) =
 fun procEntryExit3 ({name=name, formals=formals, locals=locals}:frame, body : Assem.instr list) =
 	let
 		val lab = [A.LABEL{assem=(Symbol.name name) ^ ":\n", lab=name}] (* method label *)
-		val spdown = [A.OPER{assem="addi `d0, `s0, -" ^ (Int.toString (4*(!locals+12))) ^ "\n", src=[SP], dst=[SP], jump=NONE}](* move sp by wordsize*(locals+1ra+1fp+10t)*)
+		val spdown = [A.OPER{assem="addi `d0, `s0, -" ^ (Int.toString (4*(!locals+20))) ^ "\n", src=[SP], dst=[SP], jump=NONE}](* move sp by wordsize*(locals+1ra+1fp+10t+8s)*)
 		val swra = [A.OPER{assem="sw `s1, 0(`s0)\n", src=[SP, RA], dst=[], jump=NONE}] (* sw $ra, 0($sp) *)
 		val swfp = [A.OPER{assem="sw `s1, " ^ (Int.toString wordsize) ^ "(`s0)\n", src=[SP, FP], dst=[], jump=NONE}] (* sw $fp, wordsize($sp) *)
 
 		fun save_tregs (_,[]) = []
 			| save_tregs (n,treg::list) = A.OPER{assem="sw `s1, " ^ (Int.toString (8+4*(!locals+n))) ^ "(`s0)\n", src=[SP, treg], dst=[], jump=NONE}::save_tregs (n+1,list)
-		val scallee = save_tregs (0, callersaves) (* sw $t0-t9, 8+4*locals...48+4*locals($sp) *)
+		val scaller = save_tregs (0, callersaves) (* sw $t0-t9, 8+4*locals...48+4*locals($sp) *)
+
+		fun save_sregs (_,[]) = []
+			| save_sregs (n,sreg::list) = A.OPER{assem="sw `s1, " ^ (Int.toString (48+4*(!locals+n))) ^ "(`s0)\n", src=[SP, sreg], dst=[], jump=NONE}::save_sregs (n+1,list)
+		val scallee = save_sregs (0, calleesaves) (* sw $s0-s8, 48+4*locals...80+4*locals($sp) *)
 
 		(* body - see below *)
 
@@ -122,11 +126,15 @@ fun procEntryExit3 ({name=name, formals=formals, locals=locals}:frame, body : As
 
 		fun load_tregs (_,[]) = []
 			| load_tregs (n,treg::list) = A.OPER{assem="lw `d0, " ^ (Int.toString (8+4*(!locals+n))) ^ "(`s0)\n", src=[SP], dst=[treg], jump=NONE}::load_tregs (n+1,list)
-		val lcallee = load_tregs (0, callersaves) (* lw $t0-t9, 8+4*locals...48+4*locals($sp) *)
+		val lcaller = load_tregs (0, callersaves) (* lw $t0-t9, 8+4*locals...48+4*locals($sp) *)
 
-		val spup = [A.OPER{assem="addi `d0, `s0, " ^ (Int.toString (4*(!locals+12))) ^ "\n", src=[SP], dst=[SP], jump=NONE}] (* move sp by wordsize*(locals+1ra+1fp+8s)*)
+		fun load_sregs (_,[]) = []
+			| load_sregs (n,sreg::list) = A.OPER{assem="lw `d0, " ^ (Int.toString (48+4*(!locals+n))) ^ "(`s0)\n", src=[SP], dst=[sreg], jump=NONE}::load_sregs (n+1,list)
+		val lcallee = load_sregs (0, calleesaves) (* lw $s0-s8, 48+4*locals...80+4*locals($sp) *)
+
+		val spup = [A.OPER{assem="addi `d0, `s0, " ^ (Int.toString (4*(!locals+20))) ^ "\n", src=[SP], dst=[SP], jump=NONE}] (* move sp by wordsize*(locals+1ra+1fp++10t8s)*)
 		val jrra = [Assem.OPER{assem="jr `d0\n", src=[],dst=[RA],jump=NONE}] (* jr $ra *)
-		val body' = if Symbol.name name="main" then lab @ body @ jrra else lab @ spdown @ swra @ swfp @ scallee @ body @ lwra @ lwfp @ lcallee @ spup @ jrra
+		val body' = if Symbol.name name="tig_main" then lab @ body @ jrra else lab @ spdown @ swra @ swfp @ scaller @ scallee @ body @ lwra @ lwfp @ lcaller @ lcallee @ spup @ jrra
 	in
 		{prolog = "PROCEDURE " ^ Symbol.name name ^ "\n", body = body', epilog = "END " ^ Symbol.name name ^ "\n"}
 	end
