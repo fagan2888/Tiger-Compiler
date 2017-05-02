@@ -18,3 +18,4 @@ Creates "file.tig.s" which can be run in SPIM
 - Static link argument when calling functions is not correct, for example for tig_main passes 0($fp) as the static link when it should be $fp. 
 - Not handling the $t registers correctly. These are caller saves registers. When calling an external lib function like tig_initarray, the values in the $t registers are lost and therefore some of the test cases fail to run correctly (see test42.tig). 
 - Not handling arguments correctly. For example test6.tig which has the do_nothing1 function has 2 arguments, a and b. The b is actually completely ignored and never used. The a is incremented by 1 and then passed as an argument to do_nothing2. Assembly uses argument b instead of a.
+- FP should point to start of functions stack frame (variables are fixed offset from FP), SP should point to the end of the stack (in presence of dynamic stack allocation (arrays)
